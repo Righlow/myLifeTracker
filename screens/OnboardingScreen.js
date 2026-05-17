@@ -1,14 +1,5 @@
-// 4-slide onboarding flow of instructions shown only on first app launch.
-//  growing SVG plant, animated slide transitions,
-// floating particles, and AsyncStorage persistence
-
-//useRef persists values between renders without causing re-renders.
-// Used here to hold Animated.Value instances which must be stable.
+// 4-slide onboarding flow shown only on first app launch.
 import React, { useRef, useState, useEffect } from "react";
-//react native built in animation  API
-//SafeAreaView must come from react-native-safe-area-context
-//to correctly handle dynamic islands across different devicess
-
 import {
   View,
   Text,
@@ -17,18 +8,17 @@ import {
   Animated,
   Dimensions,
 } from "react-native";
-
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Svg, { Path, Circle, Ellipse, G } from "react-native-svg";
-import { COLORS } from "../constants/colors"; // ✅ named import
+import { COLORS } from "../constants/colors";
+
 const { width, height } = Dimensions.get("window");
 const GREEN = COLORS.neonGreen;
 const PURPLE = COLORS.neonPurple;
 const BLUE = COLORS.neonBlue;
 const AMBER = COLORS.neonAmber;
 
-//  Slides config
 const SLIDES = [
   {
     id: 0,
@@ -36,7 +26,7 @@ const SLIDES = [
     sub: "Your personal growth tracker.\nBuilt around your life.",
     accent: GREEN,
     tip: null,
-    plantXP: 0, // seed
+    plantXP: 0,
   },
   {
     id: 1,
@@ -44,7 +34,7 @@ const SLIDES = [
     sub: "Log your habits every day.\nEach one feeds your plant.",
     accent: GREEN,
     tip: "🌿  Habit → XP → Growth",
-    plantXP: 150, // sprouting
+    plantXP: 150,
   },
   {
     id: 2,
@@ -52,7 +42,7 @@ const SLIDES = [
     sub: "Log sleep, water and movement.\nSet weekly, monthly and yearly goals.",
     accent: BLUE,
     tip: "💧  Sleep · Water · Movement",
-    plantXP: 350, // growing
+    plantXP: 350,
   },
   {
     id: 3,
@@ -60,11 +50,11 @@ const SLIDES = [
     sub: "Your plant reflects your progress\nacross every area of your life.",
     accent: PURPLE,
     tip: null,
-    plantXP: 500, // fully bloomed
+    plantXP: 500,
   },
 ];
 
-// ── Mini plant SVG that grows with XP ────────────────────────
+// ── Mini plant SVG ────────────────────────────────────────────
 function PlantStage({ xp, accent }) {
   const W = width * 0.7;
   const H = 220;
@@ -96,12 +86,18 @@ function PlantStage({ xp, accent }) {
     { x: W * 0.22, y: H * 0.44 },
   ];
 
+  const safeAccent = accent || GREEN;
+
   return (
     <Svg width={W} height={H}>
-      {/* Ground */}
-      <Ellipse cx={cx} cy={groundY + 6} rx={50} ry={7} fill={`${GREEN}15`} />
+      <Ellipse
+        cx={cx}
+        cy={groundY + 6}
+        rx={50}
+        ry={7}
+        fill={`${safeAccent}15`}
+      />
 
-      {/* Trunk */}
       {pct > 0 && (
         <Path
           d={`M${cx - 6},${groundY} C${cx - 4},${trunkTopY + 25} ${cx + 3},${trunkTopY + 15} ${cx},${trunkTopY}`}
@@ -112,29 +108,25 @@ function PlantStage({ xp, accent }) {
         />
       )}
 
-      {/* Left branch */}
       {pct > 0.2 && (
-        <Path
-          d={`M${cx},${trunkTopY + 18} C${cx - branchSpan * 0.5},${trunkTopY + 8} ${cx - branchSpan},${trunkTopY - 5} ${cx - branchSpan},${trunkTopY - 14}`}
-          stroke="#5a3a1a"
-          strokeWidth={5}
-          fill="none"
-          strokeLinecap="round"
-        />
+        <>
+          <Path
+            d={`M${cx},${trunkTopY + 18} C${cx - branchSpan * 0.5},${trunkTopY + 8} ${cx - branchSpan},${trunkTopY - 5} ${cx - branchSpan},${trunkTopY - 14}`}
+            stroke="#5a3a1a"
+            strokeWidth={5}
+            fill="none"
+            strokeLinecap="round"
+          />
+          <Path
+            d={`M${cx},${trunkTopY + 13} C${cx + branchSpan * 0.5},${trunkTopY + 4} ${cx + branchSpan},${trunkTopY - 9} ${cx + branchSpan},${trunkTopY - 18}`}
+            stroke="#5a3a1a"
+            strokeWidth={5}
+            fill="none"
+            strokeLinecap="round"
+          />
+        </>
       )}
 
-      {/* Right branch */}
-      {pct > 0.2 && (
-        <Path
-          d={`M${cx},${trunkTopY + 13} C${cx + branchSpan * 0.5},${trunkTopY + 4} ${cx + branchSpan},${trunkTopY - 9} ${cx + branchSpan},${trunkTopY - 18}`}
-          stroke="#5a3a1a"
-          strokeWidth={5}
-          fill="none"
-          strokeLinecap="round"
-        />
-      )}
-
-      {/* Canopy */}
       {pct > 0.05 && (
         <>
           <Ellipse
@@ -142,7 +134,7 @@ function PlantStage({ xp, accent }) {
             cy={trunkTopY}
             rx={canopyR + 5}
             ry={canopyR * 0.65 + 3}
-            fill={`rgba(0,120,60,0.18)`}
+            fill="rgba(0,120,60,0.18)"
           />
           <Ellipse
             cx={cx}
@@ -168,7 +160,6 @@ function PlantStage({ xp, accent }) {
         </>
       )}
 
-      {/* Seed (pct === 0) */}
       {pct === 0 && (
         <>
           <Ellipse cx={cx} cy={groundY - 8} rx={10} ry={14} fill="#5a3a1a" />
@@ -182,7 +173,6 @@ function PlantStage({ xp, accent }) {
         </>
       )}
 
-      {/* Domain blooms */}
       {bloomDomains.map((d, i) => {
         const pos = BLOOM_POS[i];
         const color = BLOOM_COLORS[d];
@@ -203,7 +193,7 @@ function PlantStage({ xp, accent }) {
   );
 }
 
-// ── Floating particle (animated dot) ─────────────────────────
+// ── Floating particle ─────────────────────────────────────────
 function Particle({ color, delay, startX, startY }) {
   const y = useRef(new Animated.Value(0)).current;
   const op = useRef(new Animated.Value(0)).current;
@@ -270,17 +260,18 @@ function Particle({ color, delay, startX, startY }) {
 export default function OnboardingScreen({ onDone }) {
   const [current, setCurrent] = useState(0);
 
-  // Animated values per slide
   const fadeTitle = useRef(new Animated.Value(0)).current;
-  const slidePlant = useRef(new Animated.Value(0)).current;
   const scaleBtn = useRef(new Animated.Value(1)).current;
   const plantScale = useRef(new Animated.Value(0.7)).current;
 
-  // Animate in when slide changes
+  // ── Safety: clamp current to valid range ──────────────────
+  const safeIdx = Math.max(0, Math.min(current, SLIDES.length - 1));
+  const slide = SLIDES[safeIdx]; // always defined
+  const isLast = safeIdx === SLIDES.length - 1;
+
   useEffect(() => {
     fadeTitle.setValue(0);
     plantScale.setValue(0.7);
-
     Animated.parallel([
       Animated.timing(fadeTitle, {
         toValue: 1,
@@ -296,36 +287,27 @@ export default function OnboardingScreen({ onDone }) {
     ]).start();
   }, [current]);
 
-  const slide = SLIDES[current];
-  const isLast = current === SLIDES.length - 1;
-
   const next = () => {
     if (isLast) {
       handleDone();
     } else {
-      // Fade out then move to next
       Animated.timing(fadeTitle, {
         toValue: 0,
         duration: 200,
         useNativeDriver: true,
-      }).start(() => setCurrent((c) => c + 1));
+      }).start(() => setCurrent((c) => Math.min(c + 1, SLIDES.length - 1)));
     }
   };
 
   const handleDone = async () => {
-    // Save and navigate immediately — don't wait for animation callback
     await AsyncStorage.setItem("onboarding_done", "true");
-    if (typeof onDone === "function") {
-      onDone();
-    }
-    // Animation runs in parallel
+    if (typeof onDone === "function") onDone();
     Animated.sequence([
       Animated.spring(scaleBtn, { toValue: 0.92, useNativeDriver: true }),
       Animated.spring(scaleBtn, { toValue: 1, useNativeDriver: true }),
     ]).start();
   };
 
-  // Particles — only show when plant has grown (slide 1+)
   const particles = [
     { color: GREEN, delay: 0, startX: width * 0.2, startY: height * 0.38 },
     { color: BLUE, delay: 700, startX: width * 0.6, startY: height * 0.32 },
@@ -336,12 +318,12 @@ export default function OnboardingScreen({ onDone }) {
 
   return (
     <SafeAreaView style={s.container}>
-      {/* Background glow that matches accent */}
+      {/* Background glow */}
       <Animated.View
         style={[s.bgGlow, { backgroundColor: `${slide.accent}12` }]}
       />
 
-      {/* Floating particles (visible from slide 1 onwards) */}
+      {/* Floating particles (slide 1+) */}
       {current > 0 && particles.map((p, i) => <Particle key={i} {...p} />)}
 
       {/* Progress dots */}
@@ -358,13 +340,11 @@ export default function OnboardingScreen({ onDone }) {
         ))}
       </View>
 
-      {/* Plant — grows each slide */}
+      {/* Plant */}
       <Animated.View
         style={[s.plantWrap, { transform: [{ scale: plantScale }] }]}
       >
         <PlantStage xp={slide.plantXP} accent={slide.accent} />
-
-        {/* Stage label */}
         <View
           style={[
             s.stagePill,
@@ -386,11 +366,10 @@ export default function OnboardingScreen({ onDone }) {
         </View>
       </Animated.View>
 
-      {/* Text content */}
+      {/* Text */}
       <Animated.View style={[s.textWrap, { opacity: fadeTitle }]}>
         <Text style={[s.title, { color: slide.accent }]}>{slide.title}</Text>
         <Text style={s.sub}>{slide.sub}</Text>
-
         {slide.tip && (
           <View
             style={[
@@ -415,8 +394,6 @@ export default function OnboardingScreen({ onDone }) {
         >
           <Text style={s.btnTxt}>{isLast ? "GET STARTED  🌱" : "NEXT  →"}</Text>
         </TouchableOpacity>
-
-        {/* Skip — only on non-last slides */}
         {!isLast && (
           <TouchableOpacity onPress={handleDone} style={s.skipBtn}>
             <Text style={s.skipTxt}>Skip</Text>
@@ -444,16 +421,13 @@ const s = StyleSheet.create({
     top: height * 0.15,
     alignSelf: "center",
   },
-
   dots: { flexDirection: "row", gap: 6, marginTop: 16, alignSelf: "center" },
   dot: {
     width: 7,
     height: 7,
     borderRadius: 4,
     backgroundColor: "rgba(255,255,255,0.15)",
-    transition: "width 0.3s",
   },
-
   plantWrap: { alignItems: "center", marginTop: 10 },
   stagePill: {
     marginTop: 8,
@@ -463,7 +437,6 @@ const s = StyleSheet.create({
     borderWidth: 1,
   },
   stageTxt: { fontSize: 10, fontWeight: "800", letterSpacing: 2 },
-
   textWrap: { alignItems: "center", paddingHorizontal: 32, gap: 10 },
   title: {
     fontSize: 32,
@@ -486,7 +459,6 @@ const s = StyleSheet.create({
     borderWidth: 1,
   },
   tipTxt: { fontSize: 12, fontWeight: "700" },
-
   btnWrap: {
     width: "100%",
     paddingHorizontal: 28,

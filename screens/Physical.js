@@ -1,8 +1,5 @@
-// ─────────────────────────────────────────────────────────────
 // screens/Physical.js  —  1Life Hub
-// Sub-tabs: Sleep | Diet | Gym  +  fan FAB menu
-// ─────────────────────────────────────────────────────────────
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,9 +7,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
-  Animated,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
 import { healthStore } from "../store";
 import { COLORS } from "../constants/colors";
@@ -20,237 +21,370 @@ import { COLORS } from "../constants/colors";
 const GREEN = COLORS.neonGreen;
 const RED = COLORS.neonRed;
 const MUTED = COLORS.textMuted;
+const AMBER = COLORS.neonAmber || "#fbbf24";
 
-// ── Sub tabs ──────────────────────────────────────────────────
 const TABS = [
-  { key: "sleep", label: "Sleep" },
-  { key: "diet", label: "Diet" },
-  { key: "gym", label: "Gym" },
+  { key: "sleep", label: "Sleep", icon: "moon-outline" },
+  { key: "diet", label: "Diet", icon: "nutrition-outline" },
+  { key: "gym", label: "Gym", icon: "barbell-outline" },
 ];
 
-// ── Fan FAB ───────────────────────────────────────────────────
-function FanFAB({ onLogSleep, onLogDiet, onLogGym }) {
-  const [open, setOpen] = useState(false);
+const METRIC_CONFIG = {
+  sleep: {
+    label: "Hours Slept",
+    unit: "hrs",
+    max: 12,
+    step: 0.5,
+    goal: 8,
+    icon: "moon-outline",
+    quick: [5, 6, 7, 8, 9],
+    quickFmt: (v) => `${v}h`,
+    tip: "Aim for 7–9 hours",
+  },
+  diet: {
+    label: "Water Glasses",
+    unit: "gl",
+    max: 12,
+    step: 1,
+    goal: 8,
+    icon: "nutrition-outline",
+    quick: [2, 4, 6, 8, 10],
+    quickFmt: (v) => `${v}gl`,
+    tip: "Aim for 8 glasses",
+  },
+  gym: {
+    label: "Active Minutes",
+    unit: "min",
+    max: 120,
+    step: 5,
+    goal: 60,
+    icon: "barbell-outline",
+    quick: [15, 30, 45, 60, 90],
+    quickFmt: (v) => `${v}m`,
+    tip: "Aim for 60 minutes",
+  },
+};
 
-  const anim1 = useRef(new Animated.Value(0)).current;
-  const anim2 = useRef(new Animated.Value(0)).current;
-  const anim3 = useRef(new Animated.Value(0)).current;
-  const rotate = useRef(new Animated.Value(0)).current;
-  const opacity1 = useRef(new Animated.Value(0)).current;
-  const opacity2 = useRef(new Animated.Value(0)).current;
-  const opacity3 = useRef(new Animated.Value(0)).current;
+// ── LOG MODAL ─────────────────────────────────────────────────
+function LogModal({
+  visible,
+  metric,
+  currentValue,
+  onSave,
+  onClose,
+  meals,
+  loggedMeals,
+  onMealToggle,
+  workoutType,
+  onWorkoutType,
+}) {
+  const [value, setValue] = useState(currentValue);
 
-  const toggle = () => {
-    const toValue = open ? 0 : 1;
-    Animated.parallel([
-      Animated.spring(rotate, { toValue, useNativeDriver: true, speed: 20 }),
-      Animated.spring(anim1, {
-        toValue,
-        useNativeDriver: true,
-        speed: 18,
-        delay: 0,
-      }),
-      Animated.spring(anim2, {
-        toValue,
-        useNativeDriver: true,
-        speed: 18,
-        delay: 40,
-      }),
-      Animated.spring(anim3, {
-        toValue,
-        useNativeDriver: true,
-        speed: 18,
-        delay: 80,
-      }),
-      Animated.timing(opacity1, {
-        toValue,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity2, {
-        toValue,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity3, {
-        toValue,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start();
-    setOpen(!open);
-  };
+  useEffect(() => {
+    setValue(currentValue);
+  }, [currentValue, visible]);
 
-  const close = () => {
-    if (open) toggle();
-  };
+  if (!metric) return null;
+  const cfg = METRIC_CONFIG[metric];
+  const pct = Math.min((value / cfg.goal) * 100, 100);
+  const atGoal = value >= cfg.goal;
+  const remaining = cfg.goal - value;
 
-  const spin = rotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "45deg"],
-  });
-
-  const FanItem = ({ anim, opacity, label, onPress, icon }) => (
-    <Animated.View
-      style={[
-        p.fanItem,
-        {
-          opacity,
-          transform: [
-            {
-              translateY: anim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, -1],
-              }),
-            },
-          ],
-          bottom: anim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }),
-        },
-      ]}
-    >
-      <Animated.View
-        style={{ opacity, flexDirection: "row", alignItems: "center", gap: 10 }}
-      >
-        <Text style={p.fanLabel}>{label}</Text>
-        <TouchableOpacity
-          style={p.fanBtn}
-          onPress={() => {
-            close();
-            onPress();
-          }}
-          activeOpacity={0.8}
-        >
-          <Text style={p.fanIcon}>{icon}</Text>
-        </TouchableOpacity>
-      </Animated.View>
-    </Animated.View>
-  );
+  const contextTip = atGoal
+    ? "🎯 Goal hit! Great work!"
+    : metric === "sleep"
+      ? `${remaining.toFixed(1)} more hours to goal`
+      : metric === "diet"
+        ? `${remaining} more glasses to goal`
+        : `${remaining} more minutes to goal`;
 
   return (
-    <View style={p.fabWrap} pointerEvents="box-none">
-      {/* Fan items */}
-      <Animated.View
-        style={[
-          p.fanStack,
-          {
-            bottom: anim1.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 70],
-            }),
-          },
-        ]}
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={lg.overlay}
       >
-        <FanItem
-          anim={anim1}
-          opacity={opacity1}
-          label="Log Sleep"
-          icon="🌙"
-          onPress={onLogSleep}
+        <TouchableOpacity
+          style={lg.backdrop}
+          activeOpacity={1}
+          onPress={onClose}
         />
-      </Animated.View>
-      <Animated.View
-        style={[
-          p.fanStack,
-          {
-            bottom: anim2.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 130],
-            }),
-          },
-        ]}
-      >
-        <FanItem
-          anim={anim2}
-          opacity={opacity2}
-          label="Log Diet"
-          icon="🥗"
-          onPress={onLogDiet}
-        />
-      </Animated.View>
-      <Animated.View
-        style={[
-          p.fanStack,
-          {
-            bottom: anim3.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 190],
-            }),
-          },
-        ]}
-      >
-        <FanItem
-          anim={anim3}
-          opacity={opacity3}
-          label="Log Gym"
-          icon="💪"
-          onPress={onLogGym}
-        />
-      </Animated.View>
+        <View style={lg.sheet}>
+          <View style={lg.handle} />
+          <View style={lg.header}>
+            <Ionicons name={cfg.icon} size={22} color={GREEN} />
+            <Text style={lg.title}>LOG {cfg.label.toUpperCase()}</Text>
+          </View>
 
-      {/* Main FAB */}
-      <TouchableOpacity style={p.fab} onPress={toggle} activeOpacity={0.85}>
-        <Animated.Text style={[p.fabIcon, { transform: [{ rotate: spin }] }]}>
-          ＋
-        </Animated.Text>
-      </TouchableOpacity>
+          {/* Big value */}
+          <View style={lg.valueRow}>
+            <Text style={[lg.bigNum, { color: atGoal ? GREEN : COLORS.text }]}>
+              {value % 1 === 0 ? value : value.toFixed(1)}
+            </Text>
+            <Text style={lg.bigUnit}>{cfg.unit}</Text>
+            <Text style={lg.divSlash}>/</Text>
+            <Text style={lg.goalNum}>{cfg.goal}</Text>
+          </View>
+
+          {/* Slider */}
+          <Slider
+            style={{ width: "100%", height: 44 }}
+            minimumValue={0}
+            maximumValue={cfg.max}
+            step={cfg.step}
+            value={value}
+            onValueChange={setValue}
+            minimumTrackTintColor={atGoal ? GREEN : "rgba(255,255,255,0.35)"}
+            maximumTrackTintColor="rgba(255,255,255,0.08)"
+            thumbTintColor={GREEN}
+          />
+
+          {/* Progress bar */}
+          <View style={lg.progressTrack}>
+            <View
+              style={[
+                lg.progressFill,
+                { width: `${pct}%`, backgroundColor: atGoal ? GREEN : AMBER },
+              ]}
+            />
+          </View>
+
+          {/* Contextual tip */}
+          <Text style={[lg.contextTip, { color: atGoal ? GREEN : MUTED }]}>
+            {contextTip}
+          </Text>
+
+          {/* Quick picks */}
+          <View style={lg.quickRow}>
+            {cfg.quick.map((v) => (
+              <TouchableOpacity
+                key={v}
+                style={[lg.quickBtn, value === v && lg.quickBtnActive]}
+                onPress={() => setValue(v)}
+              >
+                <Text style={[lg.quickTxt, value === v && lg.quickTxtActive]}>
+                  {cfg.quickFmt(v)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Meals section for diet */}
+          {metric === "diet" && (
+            <View style={lg.extrasSection}>
+              <Text style={lg.extrasTitle}>MEALS TODAY</Text>
+              <View style={lg.mealsRow}>
+                {meals.map((meal) => (
+                  <TouchableOpacity
+                    key={meal}
+                    style={[
+                      lg.mealChip,
+                      loggedMeals[meal] && lg.mealChipActive,
+                    ]}
+                    onPress={() => onMealToggle(meal)}
+                    activeOpacity={0.75}
+                  >
+                    <Text
+                      style={[
+                        lg.mealChipTxt,
+                        loggedMeals[meal] && lg.mealChipTxtActive,
+                      ]}
+                    >
+                      {meal}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Workout type for gym */}
+          {metric === "gym" && (
+            <View style={lg.extrasSection}>
+              <Text style={lg.extrasTitle}>WORKOUT TYPE</Text>
+              <View style={lg.mealsRow}>
+                {["Cardio", "Strength", "Flexibility", "Sports", "Walk"].map(
+                  (w) => (
+                    <TouchableOpacity
+                      key={w}
+                      style={[
+                        lg.mealChip,
+                        workoutType === w && lg.mealChipActive,
+                      ]}
+                      onPress={() => onWorkoutType(w)}
+                      activeOpacity={0.75}
+                    >
+                      <Text
+                        style={[
+                          lg.mealChipTxt,
+                          workoutType === w && lg.mealChipTxtActive,
+                        ]}
+                      >
+                        {w}
+                      </Text>
+                    </TouchableOpacity>
+                  ),
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Sleep quality for sleep */}
+          {metric === "sleep" && (
+            <View style={lg.extrasSection}>
+              <Text style={lg.extrasTitle}>SLEEP QUALITY</Text>
+              <View style={lg.mealsRow}>
+                {["Poor", "Fair", "Good", "Great"].map((q) => (
+                  <TouchableOpacity
+                    key={q}
+                    style={[
+                      lg.mealChip,
+                      workoutType === q && lg.mealChipActive,
+                    ]}
+                    onPress={() => onWorkoutType(q)}
+                    activeOpacity={0.75}
+                  >
+                    <Text
+                      style={[
+                        lg.mealChipTxt,
+                        workoutType === q && lg.mealChipTxtActive,
+                      ]}
+                    >
+                      {q}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          <View style={lg.actions}>
+            <TouchableOpacity
+              style={lg.cancelBtn}
+              onPress={onClose}
+              activeOpacity={0.75}
+            >
+              <Text style={lg.cancelTxt}>CANCEL</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={lg.saveBtn}
+              onPress={() => {
+                onSave(metric, value);
+                onClose();
+              }}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="checkmark" size={18} color="#000" />
+              <Text style={lg.saveTxt}>SAVE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+// ── STAT CARD — read-only with +/- quick buttons for diet ─────
+function StatCard({ metricKey, value, onQuickChange }) {
+  const cfg = METRIC_CONFIG[metricKey];
+  const pct = Math.min((value / cfg.goal) * 100, 100);
+  const atGoal = value >= cfg.goal;
+  const color = atGoal ? GREEN : pct > 0 ? "rgba(255,255,255,0.7)" : MUTED;
+
+  const remaining = Math.max(0, cfg.goal - value);
+  const contextTip = atGoal
+    ? "🎯 Goal hit! Great work!"
+    : metricKey === "sleep"
+      ? `${remaining.toFixed(1)} more hours to goal`
+      : metricKey === "diet"
+        ? `${remaining} more glasses to goal`
+        : `${remaining} more minutes to goal`;
+
+  return (
+    <View style={sc.card}>
+      <View style={sc.row}>
+        <View
+          style={[
+            sc.iconWrap,
+            {
+              backgroundColor: atGoal ? `${GREEN}20` : "rgba(255,255,255,0.06)",
+            },
+          ]}
+        >
+          <Ionicons name={cfg.icon} size={22} color={atGoal ? GREEN : MUTED} />
+        </View>
+        <View style={{ flex: 1, marginLeft: 14 }}>
+          <Text style={sc.label}>{cfg.label}</Text>
+          <View style={sc.valueRow}>
+            <Text style={[sc.value, { color }]}>
+              {value % 1 === 0 ? value : value.toFixed(1)}
+            </Text>
+            <Text style={sc.unit}> {cfg.unit}</Text>
+            <Text style={sc.goal}> / {cfg.goal}</Text>
+          </View>
+        </View>
+
+        {/* +/- buttons for diet, badge for others */}
+        {metricKey === "diet" ? (
+          <View style={sc.quickBtns}>
+            <TouchableOpacity
+              style={sc.minusBtn}
+              onPress={() => onQuickChange(-1)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="remove" size={16} color={MUTED} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={sc.plusBtn}
+              onPress={() => onQuickChange(1)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="add" size={16} color="#000" />
+            </TouchableOpacity>
+          </View>
+        ) : atGoal ? (
+          <View style={sc.goalBadge}>
+            <Text style={sc.goalTxt}>GOAL HIT</Text>
+          </View>
+        ) : value > 0 ? (
+          <View style={sc.progressBadge}>
+            <Text style={sc.progressBadgeTxt}>{Math.round(pct)}%</Text>
+          </View>
+        ) : (
+          <View style={sc.emptyBadge}>
+            <Text style={sc.emptyBadgeTxt}>Not logged</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={sc.track}>
+        <View
+          style={[
+            sc.fill,
+            {
+              width: `${pct}%`,
+              backgroundColor: atGoal ? GREEN : pct > 0 ? AMBER : "transparent",
+            },
+          ]}
+        />
+      </View>
+      <Text style={[sc.contextTip, { color: atGoal ? GREEN : MUTED }]}>
+        {contextTip}
+      </Text>
     </View>
   );
 }
 
-// ── Sleep Tab ─────────────────────────────────────────────────
-function SleepTab({ sleep, setSleep, save }) {
-  const pct = Math.min((sleep / 8) * 100, 100);
-  const atGoal = sleep >= 8;
-
+// ── TAB CONTENT ───────────────────────────────────────────────
+function SleepTab({ sleep }) {
   return (
     <View style={p.tabContent}>
-      <View style={p.metricCard}>
-        <View style={p.metricHeader}>
-          <Text style={p.metricTitle}>Hours slept</Text>
-          <View
-            style={[
-              p.valuePill,
-              { borderColor: atGoal ? `${GREEN}40` : "rgba(255,255,255,0.1)" },
-            ]}
-          >
-            <Text style={[p.valueNum, { color: atGoal ? GREEN : COLORS.text }]}>
-              {sleep % 1 === 0 ? sleep : sleep.toFixed(1)}
-            </Text>
-            <Text style={p.valueUnit}> hrs</Text>
-          </View>
-        </View>
-        <Slider
-          style={p.slider}
-          minimumValue={0}
-          maximumValue={12}
-          step={0.5}
-          value={sleep}
-          onValueChange={setSleep}
-          onSlidingComplete={(v) => save({ sleep: v })}
-          minimumTrackTintColor={atGoal ? GREEN : "rgba(255,255,255,0.3)"}
-          maximumTrackTintColor="rgba(255,255,255,0.07)"
-          thumbTintColor={atGoal ? GREEN : COLORS.text}
-        />
-        <View style={p.metricFooter}>
-          <Text style={p.tip}>Aim for 7–9 hours</Text>
-          {atGoal && (
-            <Text style={[p.goalBadge, { color: GREEN }]}>Goal hit ✓</Text>
-          )}
-        </View>
-        <View style={p.track}>
-          <View
-            style={[
-              p.fill,
-              {
-                width: `${pct}%`,
-                backgroundColor: atGoal ? GREEN : "rgba(255,255,255,0.2)",
-              },
-            ]}
-          />
-        </View>
-      </View>
-
-      {/* Sleep tips */}
+      <StatCard metricKey="sleep" value={sleep} />
       <View style={p.tipsCard}>
         <Text style={p.tipsTitle}>SLEEP TIPS</Text>
         {[
@@ -259,7 +393,7 @@ function SleepTab({ sleep, setSleep, save }) {
           "Same sleep time every night",
         ].map((t, i) => (
           <View key={i} style={p.tipRow}>
-            <View style={[p.tipDot, { backgroundColor: GREEN }]} />
+            <Ionicons name="checkmark-circle-outline" size={14} color={GREEN} />
             <Text style={p.tipTxt}>{t}</Text>
           </View>
         ))}
@@ -268,193 +402,23 @@ function SleepTab({ sleep, setSleep, save }) {
   );
 }
 
-// ── Diet Tab ──────────────────────────────────────────────────
-function DietTab({ water, setWater, save }) {
-  const pct = Math.min((water / 8) * 100, 100);
-  const atGoal = water >= 8;
-
-  const meals = ["Breakfast", "Lunch", "Dinner", "Snacks"];
-  const [logged, setLogged] = useState({});
-
+function DietTab({ water, onQuickWater }) {
   return (
     <View style={p.tabContent}>
-      {/* Water tracker */}
-      <View style={p.metricCard}>
-        <View style={p.metricHeader}>
-          <Text style={p.metricTitle}>Water intake</Text>
-          <View
-            style={[
-              p.valuePill,
-              { borderColor: atGoal ? `${GREEN}40` : "rgba(255,255,255,0.1)" },
-            ]}
-          >
-            <Text style={[p.valueNum, { color: atGoal ? GREEN : COLORS.text }]}>
-              {water}
-            </Text>
-            <Text style={p.valueUnit}> gl</Text>
-          </View>
-        </View>
-        <Slider
-          style={p.slider}
-          minimumValue={0}
-          maximumValue={10}
-          step={1}
-          value={water}
-          onValueChange={setWater}
-          onSlidingComplete={(v) => save({ water: v })}
-          minimumTrackTintColor={atGoal ? GREEN : "rgba(255,255,255,0.3)"}
-          maximumTrackTintColor="rgba(255,255,255,0.07)"
-          thumbTintColor={atGoal ? GREEN : COLORS.text}
-        />
-        <View style={p.metricFooter}>
-          <Text style={p.tip}>Aim for 8 glasses</Text>
-          {atGoal && (
-            <Text style={[p.goalBadge, { color: GREEN }]}>Goal hit ✓</Text>
-          )}
-        </View>
-        <View style={p.track}>
-          <View
-            style={[
-              p.fill,
-              {
-                width: `${pct}%`,
-                backgroundColor: atGoal ? GREEN : "rgba(255,255,255,0.2)",
-              },
-            ]}
-          />
-        </View>
-      </View>
-
-      {/* Meal checklist */}
-      <View style={p.tipsCard}>
-        <Text style={p.tipsTitle}>MEALS TODAY</Text>
-        {meals.map((meal) => (
-          <TouchableOpacity
-            key={meal}
-            style={p.mealRow}
-            onPress={() =>
-              setLogged((prev) => ({ ...prev, [meal]: !prev[meal] }))
-            }
-            activeOpacity={0.7}
-          >
-            <View
-              style={[
-                p.mealCheck,
-                logged[meal] && { backgroundColor: GREEN, borderColor: GREEN },
-              ]}
-            >
-              {logged[meal] && <Text style={p.mealTick}>✓</Text>}
-            </View>
-            <Text
-              style={[
-                p.mealLabel,
-                logged[meal] && {
-                  color: GREEN,
-                  opacity: 0.6,
-                  textDecorationLine: "line-through",
-                },
-              ]}
-            >
-              {meal}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <StatCard metricKey="diet" value={water} onQuickChange={onQuickWater} />
     </View>
   );
 }
 
-// ── Gym Tab ───────────────────────────────────────────────────
-function GymTab({ movement, setMovement, save }) {
-  const pct = Math.min((movement / 60) * 100, 100);
-  const atGoal = movement >= 60;
-
-  const workouts = ["Cardio", "Strength", "Flexibility", "Sports", "Walk"];
-  const [selected, setSelected] = useState(null);
-
+function GymTab({ movement }) {
   return (
     <View style={p.tabContent}>
-      {/* Movement slider */}
-      <View style={p.metricCard}>
-        <View style={p.metricHeader}>
-          <Text style={p.metricTitle}>Active minutes</Text>
-          <View
-            style={[
-              p.valuePill,
-              { borderColor: atGoal ? `${GREEN}40` : "rgba(255,255,255,0.1)" },
-            ]}
-          >
-            <Text style={[p.valueNum, { color: atGoal ? GREEN : COLORS.text }]}>
-              {movement}
-            </Text>
-            <Text style={p.valueUnit}> min</Text>
-          </View>
-        </View>
-        <Slider
-          style={p.slider}
-          minimumValue={0}
-          maximumValue={120}
-          step={5}
-          value={movement}
-          onValueChange={setMovement}
-          onSlidingComplete={(v) => save({ movement: v })}
-          minimumTrackTintColor={atGoal ? GREEN : "rgba(255,255,255,0.3)"}
-          maximumTrackTintColor="rgba(255,255,255,0.07)"
-          thumbTintColor={atGoal ? GREEN : COLORS.text}
-        />
-        <View style={p.metricFooter}>
-          <Text style={p.tip}>Aim for 60 minutes</Text>
-          {atGoal && (
-            <Text style={[p.goalBadge, { color: GREEN }]}>Goal hit ✓</Text>
-          )}
-        </View>
-        <View style={p.track}>
-          <View
-            style={[
-              p.fill,
-              {
-                width: `${pct}%`,
-                backgroundColor: atGoal ? GREEN : "rgba(255,255,255,0.2)",
-              },
-            ]}
-          />
-        </View>
-      </View>
-
-      {/* Workout type picker */}
-      <View style={p.tipsCard}>
-        <Text style={p.tipsTitle}>WORKOUT TYPE</Text>
-        <View style={p.workoutGrid}>
-          {workouts.map((w) => (
-            <TouchableOpacity
-              key={w}
-              style={[
-                p.workoutChip,
-                selected === w && {
-                  backgroundColor: GREEN,
-                  borderColor: GREEN,
-                },
-              ]}
-              onPress={() => setSelected(w)}
-              activeOpacity={0.75}
-            >
-              <Text
-                style={[
-                  p.workoutTxt,
-                  selected === w && { color: "#000", fontWeight: "700" },
-                ]}
-              >
-                {w}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
+      <StatCard metricKey="gym" value={movement} />
     </View>
   );
 }
 
-// ── 7-day history ─────────────────────────────────────────────
+// ── 7-DAY HISTORY ─────────────────────────────────────────────
 function HistoryStrip({ entries }) {
   const today = new Date();
   const LABELS = ["M", "T", "W", "T", "F", "S", "S"];
@@ -468,10 +432,9 @@ function HistoryStrip({ entries }) {
       isToday: i === 6,
       sleep: e ? Math.min((e.sleep || 0) / 8, 1) : 0,
       water: e ? Math.min((e.water || 0) / 8, 1) : 0,
-      movement: e ? Math.min((e.movement || 0) / 60, 1) : 0,
+      move: e ? Math.min((e.movement || 0) / 60, 1) : 0,
     };
   });
-
   return (
     <View style={p.historyCard}>
       <Text style={p.secLabel}>7-DAY HISTORY</Text>
@@ -485,7 +448,7 @@ function HistoryStrip({ entries }) {
               {[
                 { val: d.sleep, color: COLORS.neonBlue },
                 { val: d.water, color: GREEN },
-                { val: d.movement, color: COLORS.neonAmber },
+                { val: d.move, color: AMBER },
               ].map((bar, j) => (
                 <View key={j} style={p.barTrack}>
                   <View
@@ -505,9 +468,9 @@ function HistoryStrip({ entries }) {
       </View>
       <View style={p.legendRow}>
         {[
-          ["Sleep", COLORS.neonBlue],
-          ["Water", GREEN],
-          ["Move", COLORS.neonAmber],
+          ["SLEEP", COLORS.neonBlue],
+          ["WATER", GREEN],
+          ["MOVE", AMBER],
         ].map(([l, c]) => (
           <View key={l} style={p.legendItem}>
             <View style={[p.legendDot, { backgroundColor: c }]} />
@@ -519,17 +482,29 @@ function HistoryStrip({ entries }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// PHYSICAL SCREEN
-// ─────────────────────────────────────────────────────────────
-export default function PhysicalScreen({ navigation }) {
-  const [activeTab, setActiveTab] = useState("sleep");
+// ── MAIN SCREEN ───────────────────────────────────────────────
+export default function PhysicalScreen({ navigation, route }) {
+  const defaultTab = route?.params?.defaultTab || "sleep";
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [sleep, setSleep] = useState(0);
   const [water, setWater] = useState(0);
   const [movement, setMovement] = useState(0);
   const [loggedAt, setLoggedAt] = useState(null);
   const [allEntries, setAllEntries] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [logModal, setLogModal] = useState(false);
+  const [logMetric, setLogMetric] = useState(null);
+
+  // Meal & workout state (for modal)
+  const MEALS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
+  const [loggedMeals, setLoggedMeals] = useState({});
+  const [workoutType, setWorkoutType] = useState(null);
+  const [sleepQuality, setSleepQuality] = useState(null);
+
+  // Navigate to correct tab when route param changes
+  useEffect(() => {
+    if (route?.params?.defaultTab) setActiveTab(route.params.defaultTab);
+  }, [route?.params?.defaultTab]);
 
   const load = useCallback(async () => {
     const [today, all] = await Promise.all([
@@ -549,10 +524,9 @@ export default function PhysicalScreen({ navigation }) {
     load();
   }, [load]);
   useEffect(() => {
-    const unsub = navigation.addListener("focus", load);
-    return unsub;
+    const u = navigation.addListener("focus", load);
+    return u;
   }, [navigation, load]);
-
   const onRefresh = async () => {
     setRefreshing(true);
     await load();
@@ -560,14 +534,35 @@ export default function PhysicalScreen({ navigation }) {
   };
 
   const save = async (patch) => {
-    const current = { sleep, water, movement, ...patch };
-    const entry = await healthStore.saveToday(current);
-    setLoggedAt(entry.logged_at);
     if (patch.sleep !== undefined) setSleep(patch.sleep);
     if (patch.water !== undefined) setWater(patch.water);
     if (patch.movement !== undefined) setMovement(patch.movement);
-    const all = await healthStore.list();
-    setAllEntries(Array.isArray(all) ? all : []);
+    try {
+      const current = { sleep, water, movement, ...patch };
+      const entry = await healthStore.saveToday(current);
+      setLoggedAt(entry?.logged_at || new Date().toISOString());
+      const all = await healthStore.list();
+      setAllEntries(Array.isArray(all) ? all : []);
+    } catch {
+      Alert.alert("Error", "Could not save. Please try again.");
+    }
+  };
+
+  const openLog = (metric) => {
+    setLogMetric(metric);
+    setLogModal(true);
+  };
+
+  const handleModalSave = (metric, value) => {
+    const keyMap = { sleep: "sleep", diet: "water", gym: "movement" };
+    save({ [keyMap[metric]]: value });
+    setActiveTab(metric);
+  };
+
+  // Quick +/- for diet water count
+  const handleQuickWater = (delta) => {
+    const next = Math.max(0, Math.min(12, water + delta));
+    save({ water: next });
   };
 
   const sleepScore = Math.min(sleep / 8, 1);
@@ -576,29 +571,43 @@ export default function PhysicalScreen({ navigation }) {
   const overallScore = Math.round(
     ((sleepScore + waterScore + movementScore) / 3) * 100,
   );
-  const scoreColor = overallScore >= 50 ? GREEN : RED;
+  const scoreColor =
+    overallScore >= 70 ? GREEN : overallScore >= 40 ? AMBER : RED;
+  const formatTime = (iso) =>
+    iso
+      ? new Date(iso).toLocaleTimeString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : null;
 
-  const formatTime = (iso) => {
-    if (!iso) return null;
-    return new Date(iso).toLocaleTimeString("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  const modalCurrentValue =
+    logMetric === "sleep" ? sleep : logMetric === "diet" ? water : movement;
 
   return (
     <SafeAreaView style={p.root} edges={["top"]}>
       {/* Header */}
       <View style={p.header}>
-        <View>
-          <Text style={p.title}>Physical Health</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={p.backBtn}>
+          <Ionicons name="arrow-back" size={24} color={GREEN} />
+        </TouchableOpacity>
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={p.title}>PHYSICAL HEALTH</Text>
           <Text style={p.sub}>
             {loggedAt
               ? `Last logged ${formatTime(loggedAt)}`
-              : "Log today's metrics"}
+              : "Tap + to log today's metrics"}
           </Text>
         </View>
-        <View style={[p.scorePill, { borderColor: `${scoreColor}30` }]}>
+        <View
+          style={[
+            p.scorePill,
+            {
+              borderColor: `${scoreColor}40`,
+              backgroundColor: `${scoreColor}12`,
+            },
+          ]}
+        >
           <Text style={[p.scoreNum, { color: scoreColor }]}>
             {overallScore}
           </Text>
@@ -609,7 +618,7 @@ export default function PhysicalScreen({ navigation }) {
       {/* Overall bar */}
       <View style={p.overallCard}>
         <View style={p.overallRow}>
-          <Text style={p.overallLabel}>Today's score</Text>
+          <Text style={p.overallLabel}>TODAY'S SCORE</Text>
           <Text style={[p.overallPct, { color: scoreColor }]}>
             {overallScore}%
           </Text>
@@ -624,7 +633,7 @@ export default function PhysicalScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Sub tabs */}
+      {/* Tab bar */}
       <View style={p.tabBar}>
         {TABS.map((tab) => (
           <TouchableOpacity
@@ -633,6 +642,11 @@ export default function PhysicalScreen({ navigation }) {
             onPress={() => setActiveTab(tab.key)}
             activeOpacity={0.75}
           >
+            <Ionicons
+              name={tab.icon}
+              size={16}
+              color={activeTab === tab.key ? "#000" : MUTED}
+            />
             <Text
               style={[p.tabLabel, activeTab === tab.key && p.tabLabelActive]}
             >
@@ -642,7 +656,7 @@ export default function PhysicalScreen({ navigation }) {
         ))}
       </View>
 
-      {/* Tab content */}
+      {/* Content */}
       <ScrollView
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
@@ -654,52 +668,69 @@ export default function PhysicalScreen({ navigation }) {
           />
         }
       >
-        {activeTab === "sleep" && (
-          <SleepTab sleep={sleep} setSleep={setSleep} save={save} />
-        )}
+        {activeTab === "sleep" && <SleepTab sleep={sleep} />}
         {activeTab === "diet" && (
-          <DietTab water={water} setWater={setWater} save={save} />
+          <DietTab water={water} onQuickWater={handleQuickWater} />
         )}
-        {activeTab === "gym" && (
-          <GymTab movement={movement} setMovement={setMovement} save={save} />
-        )}
-
+        {activeTab === "gym" && <GymTab movement={movement} />}
         <HistoryStrip entries={allEntries} />
       </ScrollView>
 
-      {/* Fan FAB */}
-      <FanFAB
-        onLogSleep={() => setActiveTab("sleep")}
-        onLogDiet={() => setActiveTab("diet")}
-        onLogGym={() => setActiveTab("gym")}
+      {/* Centred + FAB — opens log modal for current tab directly */}
+      <TouchableOpacity
+        style={p.fab}
+        onPress={() => openLog(activeTab)}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="add" size={30} color="#000" />
+      </TouchableOpacity>
+
+      {/* Log Modal */}
+      <LogModal
+        visible={logModal}
+        metric={logMetric}
+        currentValue={modalCurrentValue}
+        onSave={handleModalSave}
+        onClose={() => {
+          setLogModal(false);
+          setLogMetric(null);
+        }}
+        meals={MEALS}
+        loggedMeals={loggedMeals}
+        onMealToggle={(meal) =>
+          setLoggedMeals((prev) => ({ ...prev, [meal]: !prev[meal] }))
+        }
+        workoutType={logMetric === "sleep" ? sleepQuality : workoutType}
+        onWorkoutType={(v) => {
+          if (logMetric === "sleep") setSleepQuality(v);
+          else setWorkoutType(v);
+        }}
       />
     </SafeAreaView>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
+// ── STYLES ────────────────────────────────────────────────────
 const p = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.bg },
-
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingTop: 14,
-    paddingBottom: 8,
+    paddingBottom: 10,
   },
+  backBtn: { padding: 4 },
   title: {
-    fontSize: 20,
+    fontSize: 16,
     fontFamily: "Orbitron",
     color: GREEN,
     letterSpacing: 1,
   },
-  sub: { fontSize: 10, color: MUTED, marginTop: 3 },
+  sub: { fontSize: 10, color: MUTED, marginTop: 2 },
   scorePill: {
     flexDirection: "row",
     alignItems: "baseline",
-    backgroundColor: "rgba(255,255,255,0.04)",
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -707,113 +738,71 @@ const p = StyleSheet.create({
   },
   scoreNum: { fontSize: 24, fontWeight: "900" },
   scorePct: { fontSize: 12, fontWeight: "700" },
-
   overallCard: {
-    marginHorizontal: 14,
+    marginHorizontal: 16,
     marginBottom: 12,
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
+    borderColor: "rgba(255,255,255,0.08)",
   },
   overallRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  overallLabel: { fontSize: 11, color: MUTED },
-  overallPct: { fontSize: 13, fontWeight: "800" },
+  overallLabel: {
+    fontSize: 10,
+    color: MUTED,
+    letterSpacing: 1,
+    fontWeight: "700",
+  },
+  overallPct: { fontSize: 13, fontWeight: "900" },
   overallTrack: {
-    height: 5,
+    height: 6,
     backgroundColor: "rgba(0,0,0,0.4)",
     borderRadius: 4,
     overflow: "hidden",
   },
   overallFill: { height: "100%", borderRadius: 4 },
-
-  // Sub tabs
   tabBar: {
     flexDirection: "row",
-    marginHorizontal: 14,
-    marginBottom: 12,
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderRadius: 14,
+    marginHorizontal: 16,
+    marginBottom: 14,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 16,
     padding: 4,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
+    borderColor: "rgba(255,255,255,0.08)",
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 11,
     alignItems: "center",
-    borderRadius: 11,
+    borderRadius: 13,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
   },
   tabBtnActive: { backgroundColor: GREEN },
   tabLabel: { fontSize: 12, fontWeight: "700", color: MUTED },
   tabLabelActive: { color: "#000" },
-
-  // Tab content
-  tabContent: { paddingHorizontal: 14 },
-  metricCard: {
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
-    marginBottom: 10,
-    overflow: "hidden",
-  },
-  metricHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  metricTitle: { fontSize: 14, fontWeight: "700", color: COLORS.text },
-  valuePill: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    backgroundColor: "rgba(255,255,255,0.05)",
-  },
-  valueNum: { fontSize: 18, fontWeight: "900" },
-  valueUnit: { fontSize: 10, color: MUTED, fontWeight: "600" },
-  slider: { width: "100%", height: 40 },
-  metricFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  tip: { fontSize: 10, color: MUTED },
-  goalBadge: { fontSize: 10, fontWeight: "700" },
-  track: {
-    height: 3,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    borderRadius: 2,
-    overflow: "hidden",
-  },
-  fill: { height: "100%", borderRadius: 2 },
-
-  // Tips card
+  tabContent: { paddingHorizontal: 16 },
   tipsCard: {
     backgroundColor: "rgba(255,255,255,0.03)",
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.07)",
-    marginBottom: 10,
+    marginBottom: 12,
   },
   tipsTitle: {
     fontSize: 9,
     color: MUTED,
     letterSpacing: 2,
     fontWeight: "700",
-    marginBottom: 12,
+    marginBottom: 14,
   },
   tipRow: {
     flexDirection: "row",
@@ -821,46 +810,10 @@ const p = StyleSheet.create({
     gap: 10,
     marginBottom: 10,
   },
-  tipDot: { width: 6, height: 6, borderRadius: 3 },
-  tipTxt: { fontSize: 12, color: COLORS.textDim },
-
-  // Meal checklist
-  mealRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.04)",
-  },
-  mealCheck: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  mealTick: { color: "#000", fontSize: 11, fontWeight: "900" },
-  mealLabel: { fontSize: 13, color: COLORS.text, fontWeight: "600" },
-
-  // Workout chips
-  workoutGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
-  workoutChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(255,255,255,0.04)",
-  },
-  workoutTxt: { fontSize: 12, color: MUTED },
-
-  // History
+  tipTxt: { fontSize: 13, color: COLORS.textDim },
   historyCard: {
-    marginHorizontal: 14,
-    marginBottom: 10,
+    marginHorizontal: 16,
+    marginBottom: 12,
     backgroundColor: "rgba(255,255,255,0.03)",
     borderRadius: 18,
     padding: 16,
@@ -872,12 +825,12 @@ const p = StyleSheet.create({
     color: MUTED,
     letterSpacing: 2,
     fontWeight: "700",
-    marginBottom: 10,
+    marginBottom: 12,
   },
   historyRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 12,
   },
   historyDay: { alignItems: "center", flex: 1 },
   historyLbl: { fontSize: 9, color: MUTED, marginBottom: 6 },
@@ -896,49 +849,242 @@ const p = StyleSheet.create({
     justifyContent: "flex-end",
   },
   barFill: { width: "100%", borderRadius: 3 },
-  legendRow: { flexDirection: "row", justifyContent: "center", gap: 16 },
+  legendRow: { flexDirection: "row", justifyContent: "center", gap: 20 },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
   legendDot: { width: 7, height: 7, borderRadius: 4 },
-  legendTxt: { fontSize: 9, color: MUTED },
-
-  // FAB
-  fabWrap: {
-    position: "absolute",
-    bottom: 28,
-    right: 24,
-    alignItems: "flex-end",
+  legendTxt: {
+    fontSize: 9,
+    color: MUTED,
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
   fab: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    position: "absolute",
+    bottom: 28,
+    alignSelf: "center",
+    left: "50%",
+    marginLeft: -28,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: GREEN,
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 10,
+    shadowColor: GREEN,
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
   },
-  fabIcon: { fontSize: 26, color: "#000", fontWeight: "900", lineHeight: 30 },
-  fanStack: { position: "absolute", right: 0, alignItems: "flex-end" },
-  fanItem: { alignItems: "center", flexDirection: "row", gap: 10 },
-  fanBtn: {
+});
+
+const sc = StyleSheet.create({
+  card: {
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    marginBottom: 12,
+  },
+  row: { flexDirection: "row", alignItems: "center", marginBottom: 14 },
+  iconWrap: {
     width: 46,
     height: 46,
     borderRadius: 23,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  label: {
+    fontSize: 11,
+    color: MUTED,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  valueRow: { flexDirection: "row", alignItems: "baseline" },
+  value: { fontSize: 30, fontWeight: "900" },
+  unit: { fontSize: 14, color: MUTED, fontWeight: "600" },
+  goal: { fontSize: 12, color: "rgba(255,255,255,0.25)" },
+  track: {
+    height: 6,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 4,
+    overflow: "hidden",
+    marginBottom: 10,
+  },
+  fill: { height: "100%", borderRadius: 4 },
+  contextTip: { fontSize: 11, color: MUTED },
+  goalBadge: {
+    backgroundColor: `${GREEN}18`,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: `${GREEN}35`,
+  },
+  goalTxt: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: GREEN,
+    letterSpacing: 0.5,
+  },
+  progressBadge: {
+    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  progressBadgeTxt: { fontSize: 11, fontWeight: "700", color: COLORS.text },
+  emptyBadge: {
+    backgroundColor: "rgba(255,80,80,0.1)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,80,80,0.25)",
+  },
+  emptyBadgeTxt: { fontSize: 10, fontWeight: "700", color: RED },
+  quickBtns: { flexDirection: "row", gap: 8 },
+  minusBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: "rgba(255,255,255,0.08)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
   },
-  fanIcon: { fontSize: 20 },
-  fanLabel: {
-    fontSize: 11,
-    color: COLORS.textDim,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  plusBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: GREEN,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});
+
+const lg = StyleSheet.create({
+  overlay: { flex: 1, justifyContent: "flex-end" },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.72)",
+  },
+  sheet: {
+    backgroundColor: "#0d0d1a",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    paddingBottom: 44,
+    borderTopWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 16,
+  },
+  title: { fontSize: 13, fontWeight: "900", color: GREEN, letterSpacing: 2 },
+  valueRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
+  bigNum: { fontSize: 60, fontWeight: "900", lineHeight: 68 },
+  bigUnit: { fontSize: 18, color: MUTED, fontWeight: "600" },
+  divSlash: {
+    fontSize: 22,
+    color: "rgba(255,255,255,0.2)",
+    marginHorizontal: 4,
+  },
+  goalNum: { fontSize: 22, color: "rgba(255,255,255,0.3)", fontWeight: "700" },
+  progressTrack: {
+    height: 6,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderRadius: 4,
+    overflow: "hidden",
+    marginBottom: 8,
+  },
+  progressFill: { height: "100%", borderRadius: 4 },
+  contextTip: { fontSize: 12, color: MUTED, marginBottom: 16 },
+  quickRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 16,
+    justifyContent: "center",
+    flexWrap: "wrap",
+  },
+  quickBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  quickBtnActive: { backgroundColor: GREEN, borderColor: GREEN },
+  quickTxt: { fontSize: 13, color: MUTED, fontWeight: "700" },
+  quickTxtActive: { color: "#000" },
+  extrasSection: { marginBottom: 16 },
+  extrasTitle: {
+    fontSize: 9,
+    color: MUTED,
+    letterSpacing: 2,
+    fontWeight: "700",
+    marginBottom: 10,
+  },
+  mealsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  mealChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  mealChipActive: { backgroundColor: GREEN, borderColor: GREEN },
+  mealChipTxt: { fontSize: 12, color: MUTED, fontWeight: "600" },
+  mealChipTxtActive: { color: "#000", fontWeight: "700" },
+  actions: { flexDirection: "row", gap: 12 },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
   },
+  cancelTxt: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: MUTED,
+    letterSpacing: 1,
+  },
+  saveBtn: {
+    flex: 2,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: GREEN,
+    flexDirection: "row",
+    gap: 8,
+  },
+  saveTxt: { fontSize: 13, fontWeight: "900", color: "#000", letterSpacing: 1 },
 });

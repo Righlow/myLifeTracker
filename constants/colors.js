@@ -2,12 +2,12 @@ const COLORS = {
   bg: "#050507",
   bgSoft: "#0A0A12",
 
-  card: "rgba(255, 255, 255, 0.04)",
+  card: "rgba(242, 176, 123, 0.04)",
   border: "rgba(0,224,255,0.12)",
 
   text: "#F5F7FF",
-  textDim: "rgba(255, 255, 255, 0.7)",
-  textMuted: "rgba(255,255,255,0.35)",
+  textDim: "rgba(228, 164, 16, 0.8)",
+  textMuted: "rgba(236, 225, 24, 0.55)",
 
   neon: "#00FF87",
   neonSoft: "rgba(0,255,135,0.06)",
