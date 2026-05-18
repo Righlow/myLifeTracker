@@ -1,11 +1,13 @@
 // screens/Routine.js  —  1Life Hub
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  RefreshControl,
   Animated,
   TextInput,
   Modal,
@@ -386,6 +388,45 @@ function OverviewStrip({ meetings, deadlines, tasks }) {
   );
 }
 
+// ── Inline storage helpers (no external store dependency) ─────
+const ROUTINE_KEY = "routine_items";
+
+const _routineGet = async () => {
+  try {
+    const raw = await AsyncStorage.getItem(ROUTINE_KEY);
+    if (!raw) return { meetings: [], deadlines: [], tasks: [] };
+    return JSON.parse(raw);
+  } catch {
+    return { meetings: [], deadlines: [], tasks: [] };
+  }
+};
+
+const _routineSave = async (meetings, deadlines, tasks) => {
+  try {
+    await AsyncStorage.setItem(
+      ROUTINE_KEY,
+      JSON.stringify({ meetings, deadlines, tasks }),
+    );
+  } catch {}
+};
+
+const _routineReset = async () => {
+  try {
+    const raw = await AsyncStorage.getItem(ROUTINE_KEY);
+    if (!raw) return { meetings: [], deadlines: [], tasks: [] };
+    const s = JSON.parse(raw);
+    const cleared = {
+      meetings: (s.meetings || []).map((i) => ({ ...i, done: false })),
+      deadlines: (s.deadlines || []).map((i) => ({ ...i, done: false })),
+      tasks: (s.tasks || []).map((i) => ({ ...i, done: false })),
+    };
+    await AsyncStorage.setItem(ROUTINE_KEY, JSON.stringify(cleared));
+    return cleared;
+  } catch {
+    return { meetings: [], deadlines: [], tasks: [] };
+  }
+};
+
 // ── MAIN SCREEN ───────────────────────────────────────────────
 export default function RoutineScreen({ navigation, route }) {
   const defaultTab = route?.params?.defaultTab;
@@ -395,11 +436,21 @@ export default function RoutineScreen({ navigation, route }) {
   const [tasks, setTasks] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState("task");
+  const [refreshing, setRefreshing] = useState(false);
 
+  // Load persisted data on mount
+  useEffect(() => {
+    _routineGet().then(({ meetings: m, deadlines: d, tasks: t }) => {
+      setMeetings(m || []);
+      setDeadlines(d || []);
+      setTasks(t || []);
+    });
+  }, []);
+
+  // Auto-open modal when arriving from Today FAB
   React.useEffect(() => {
     if (defaultTab) {
       setActiveTab(defaultTab);
-      // Auto-open the add modal with the correct type when coming from Today's FAB
       setModalType(defaultTab);
       setModalVisible(true);
     }
@@ -407,31 +458,65 @@ export default function RoutineScreen({ navigation, route }) {
 
   const listFor = (type) =>
     type === "meeting" ? meetings : type === "deadline" ? deadlines : tasks;
-  const setListFor = (type) =>
-    type === "meeting"
-      ? setMeetings
-      : type === "deadline"
-        ? setDeadlines
-        : setTasks;
-
   const openModal = (type) => {
     setModalType(type);
     setActiveTab(type);
     setModalVisible(true);
   };
+
+  // Pull-to-refresh resets all done flags — user starts fresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    const cleared = await _routineReset();
+    setMeetings(cleared.meetings || []);
+    setDeadlines(cleared.deadlines || []);
+    setTasks(cleared.tasks || []);
+    setRefreshing(false);
+  };
+
   const handleSave = (item) => {
-    setListFor(item.type)((prev) => [
-      { ...item, id: Date.now().toString(), done: false },
-      ...prev,
-    ]);
+    const newItem = { ...item, id: Date.now().toString(), done: false };
+    const m = item.type === "meeting" ? [newItem, ...meetings] : meetings;
+    const d = item.type === "deadline" ? [newItem, ...deadlines] : deadlines;
+    const t = item.type === "task" ? [newItem, ...tasks] : tasks;
+    setMeetings(m);
+    setDeadlines(d);
+    setTasks(t);
+    _routineSave(m, d, t);
     setModalVisible(false);
   };
-  const handleToggle = (type, id) =>
-    setListFor(type)((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, done: !i.done } : i)),
-    );
-  const handleDelete = (type, id) =>
-    setListFor(type)((prev) => prev.filter((i) => i.id !== id));
+
+  const handleToggle = (type, id) => {
+    // Mark as done (kept in store for XP calculation) — display filters them out
+    const m =
+      type === "meeting"
+        ? meetings.map((i) => (i.id === id ? { ...i, done: true } : i))
+        : meetings;
+    const d =
+      type === "deadline"
+        ? deadlines.map((i) => (i.id === id ? { ...i, done: true } : i))
+        : deadlines;
+    const t =
+      type === "task"
+        ? tasks.map((i) => (i.id === id ? { ...i, done: true } : i))
+        : tasks;
+    setMeetings(m);
+    setDeadlines(d);
+    setTasks(t);
+    _routineSave(m, d, t);
+  };
+
+  const handleDelete = (type, id) => {
+    const m =
+      type === "meeting" ? meetings.filter((i) => i.id !== id) : meetings;
+    const d =
+      type === "deadline" ? deadlines.filter((i) => i.id !== id) : deadlines;
+    const t = type === "task" ? tasks.filter((i) => i.id !== id) : tasks;
+    setMeetings(m);
+    setDeadlines(d);
+    setTasks(t);
+    _routineSave(m, d, t);
+  };
 
   const total = meetings.length + deadlines.length + tasks.length;
   const done =
@@ -475,7 +560,7 @@ export default function RoutineScreen({ navigation, route }) {
       <View style={r.tabBar}>
         {TABS.map((tab) => {
           const active = activeTab === tab.key;
-          const count = listFor(tab.key).length;
+          const count = listFor(tab.key).filter((i) => !i.done).length;
           return (
             <TouchableOpacity
               key={tab.key}
@@ -512,44 +597,55 @@ export default function RoutineScreen({ navigation, route }) {
       <ScrollView
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={GREEN}
+          />
+        }
       >
         {activeTab === "meeting" && (
           <View style={r.tabContent}>
-            {meetings.length === 0 ? (
+            {meetings.filter((i) => !i.done).length === 0 ? (
               <EmptyState type="meeting" />
             ) : (
-              meetings.map((item) => (
-                <ItemCard
-                  key={item.id}
-                  item={item}
-                  type="meeting"
-                  onToggle={(id) => handleToggle("meeting", id)}
-                  onDelete={(id) => handleDelete("meeting", id)}
-                />
-              ))
+              meetings
+                .filter((i) => !i.done)
+                .map((item) => (
+                  <ItemCard
+                    key={item.id}
+                    item={item}
+                    type="meeting"
+                    onToggle={(id) => handleToggle("meeting", id)}
+                    onDelete={(id) => handleDelete("meeting", id)}
+                  />
+                ))
             )}
           </View>
         )}
         {activeTab === "deadline" && (
           <View style={r.tabContent}>
-            {deadlines.length === 0 ? (
+            {deadlines.filter((i) => !i.done).length === 0 ? (
               <EmptyState type="deadline" />
             ) : (
-              deadlines.map((item) => (
-                <ItemCard
-                  key={item.id}
-                  item={item}
-                  type="deadline"
-                  onToggle={(id) => handleToggle("deadline", id)}
-                  onDelete={(id) => handleDelete("deadline", id)}
-                />
-              ))
+              deadlines
+                .filter((i) => !i.done)
+                .map((item) => (
+                  <ItemCard
+                    key={item.id}
+                    item={item}
+                    type="deadline"
+                    onToggle={(id) => handleToggle("deadline", id)}
+                    onDelete={(id) => handleDelete("deadline", id)}
+                  />
+                ))
             )}
           </View>
         )}
         {activeTab === "task" && (
           <TaskTab
-            items={tasks}
+            items={tasks.filter((i) => !i.done)}
             onToggle={(id) => handleToggle("task", id)}
             onDelete={(id) => handleDelete("task", id)}
           />

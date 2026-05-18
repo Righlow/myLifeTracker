@@ -5,8 +5,7 @@ import { useFonts } from "expo-font";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import TodayScreen from "./screens/Today";
-import HabitsScreen from "./screens/HabitsScreen";
-import GoalsScreen from "./screens/GoalsScreen";
+
 import PhysicalScreen from "./screens/Physical";
 import OnboardingScreen from "./screens/OnboardingScreen";
 import MeetingsScreen from "./screens/MeetingsScreen";

@@ -321,7 +321,28 @@ function QuickAddModal({ visible, onClose, onSave }) {
 }
 
 // ── TODAY SCREEN ──────────────────────────────────────────────
-const TASKS_KEY = "today_tasks";
+// ── Inline storage helpers ────────────────────────────────────
+const _tasksGet = async () => {
+  try {
+    const r = await AsyncStorage.getItem("today_tasks");
+    return r ? JSON.parse(r) : [];
+  } catch {
+    return [];
+  }
+};
+const _tasksSave = async (items) => {
+  try {
+    await AsyncStorage.setItem("today_tasks", JSON.stringify(items));
+  } catch {}
+};
+const _routineGet = async () => {
+  try {
+    const r = await AsyncStorage.getItem("routine_items");
+    return r ? JSON.parse(r) : { meetings: [], deadlines: [], tasks: [] };
+  } catch {
+    return { meetings: [], deadlines: [], tasks: [] };
+  }
+};
 
 export default function TodayScreen({ navigation }) {
   const [habits, setHabits] = useState([]);
@@ -331,6 +352,11 @@ export default function TodayScreen({ navigation }) {
   const [completions, setCompletions] = useState({});
   const [refreshing, setRefreshing] = useState(false);
   const [tasks, setTasks] = useState([]);
+  const [routineItems, setRoutineItems] = useState({
+    meetings: [],
+    deadlines: [],
+    tasks: [],
+  });
   const [modalOpen, setModalOpen] = useState(false);
   const [routineOpen, setRoutineOpen] = useState(false);
   const [physicalOpen, setPhysicalOpen] = useState(false);
@@ -347,24 +373,21 @@ export default function TodayScreen({ navigation }) {
 
   const loadTasks = async () => {
     try {
-      const raw = await AsyncStorage.getItem(TASKS_KEY);
-      setTasks(raw ? JSON.parse(raw) : []);
+      setTasks(await _tasksGet());
     } catch {
       setTasks([]);
     }
   };
   const saveTasks = async (u) => {
-    await AsyncStorage.setItem(TASKS_KEY, JSON.stringify(u));
+    await _tasksSave(u);
     setTasks(u);
   };
   const addTask = async (t) => {
-    const raw = await AsyncStorage.getItem(TASKS_KEY);
-    const all = raw ? JSON.parse(raw) : [];
+    const all = await _tasksGet();
     await saveTasks([...all, t]);
   };
   const toggleTask = async (id) => {
-    const raw = await AsyncStorage.getItem(TASKS_KEY);
-    const all = raw ? JSON.parse(raw) : [];
+    const all = await _tasksGet();
     await saveTasks(
       all.map((t) => (t.id === id ? { ...t, done: !t.done } : t)),
     );
@@ -376,8 +399,7 @@ export default function TodayScreen({ navigation }) {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          const raw = await AsyncStorage.getItem(TASKS_KEY);
-          const all = raw ? JSON.parse(raw) : [];
+          const all = await _tasksGet();
           await saveTasks(all.filter((t) => t.id !== id));
         },
       },
@@ -405,6 +427,17 @@ export default function TodayScreen({ navigation }) {
       setCompletions(c);
     }
     loadTasks();
+    // Load routine completions to factor into plant XP
+    try {
+      const { meetings: m, deadlines: d, tasks: t } = await _routineGet();
+      setRoutineItems({
+        meetings: m || [],
+        deadlines: d || [],
+        tasks: t || [],
+      });
+    } catch {
+      setRoutineItems({ meetings: [], deadlines: [], tasks: [] });
+    }
   };
 
   const load = useCallback(() => loadRef.current?.(), []);
@@ -455,7 +488,24 @@ export default function TodayScreen({ navigation }) {
       weeklyGoals.length /
       100
     : 0;
-  const rawScore = habitScore * 0.4 + healthScore * 0.4 + goalScore * 0.2;
+
+  // Routine score — how many meetings/deadlines/tasks are done today
+  const allRoutine = [
+    ...(routineItems.meetings || []),
+    ...(routineItems.deadlines || []),
+    ...(routineItems.tasks || []),
+  ];
+  const routineScore =
+    allRoutine.length > 0
+      ? allRoutine.filter((i) => i.done).length / allRoutine.length
+      : 0;
+
+  // XP formula: health 35% | habits 30% | routine 25% | goals 10%
+  const rawScore =
+    healthScore * 0.35 +
+    habitScore * 0.3 +
+    routineScore * 0.25 +
+    goalScore * 0.1;
   const plantXP = Math.round(rawScore * 500);
   const bloomed = [
     ...new Set(
@@ -532,12 +582,15 @@ export default function TodayScreen({ navigation }) {
       ].filter(Boolean)
     : [];
 
-  const allNotices = [...tasks, ...healthNotices];
+  const allNotices = [
+    ...(Array.isArray(tasks) ? tasks : []),
+    ...(Array.isArray(healthNotices) ? healthNotices : []),
+  ];
 
   const bars = [
-    { label: "DIET", score: Math.round(waterScore * 100) },
-    { label: "GYM", score: Math.round(gymScore * 100) },
-    { label: "SLEEP", score: Math.round(sleepScore * 100) },
+    { label: "PHYSICAL", score: Math.round(healthScore * 100) },
+    { label: "ROUTINE", score: Math.round(routineScore * 100) },
+    { label: "HABITS", score: Math.round(habitScore * 100) },
   ];
 
   return (

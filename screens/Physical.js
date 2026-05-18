@@ -534,6 +534,7 @@ export default function PhysicalScreen({ navigation, route }) {
   };
 
   const save = async (patch) => {
+    // Update local state with new value first
     if (patch.sleep !== undefined) setSleep(patch.sleep);
     if (patch.water !== undefined) setWater(patch.water);
     if (patch.movement !== undefined) setMovement(patch.movement);
@@ -543,6 +544,13 @@ export default function PhysicalScreen({ navigation, route }) {
       setLoggedAt(entry?.logged_at || new Date().toISOString());
       const all = await healthStore.list();
       setAllEntries(Array.isArray(all) ? all : []);
+      // Reset display to 0 after save — values are persisted in healthStore
+      // so XP on Today screen still reflects the saved data
+      setTimeout(() => {
+        if (patch.sleep !== undefined) setSleep(0);
+        if (patch.water !== undefined) setWater(0);
+        if (patch.movement !== undefined) setMovement(0);
+      }, 800); // brief delay so user sees the value before reset
     } catch {
       Alert.alert("Error", "Could not save. Please try again.");
     }
@@ -557,6 +565,10 @@ export default function PhysicalScreen({ navigation, route }) {
     const keyMap = { sleep: "sleep", diet: "water", gym: "movement" };
     save({ [keyMap[metric]]: value });
     setActiveTab(metric);
+    // Reset modal extras after save
+    setLoggedMeals({});
+    setWorkoutType(null);
+    setSleepQuality(null);
   };
 
   // Quick +/- for diet water count
