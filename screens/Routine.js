@@ -1,4 +1,4 @@
-// screens/Routine.js  —  1Life Hub
+// screens/Routine.js — 1Life Hub | BLUE identity screen
 import React, { useState, useRef, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -8,7 +8,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
-  Animated,
   TextInput,
   Modal,
   KeyboardAvoidingView,
@@ -16,27 +15,64 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { COLORS } from "../constants/colors";
 
-const GREEN = COLORS.neonGreen;
-const RED = COLORS.neonRed;
-const AMBER = COLORS.neonAmber || "#fbbf24";
-const BLUE = COLORS.neonBlue || "#60a5fa";
-const MUTED = COLORS.textMuted;
+const BG = "#130101";
+const GREEN = "#00B85C";
+const BLUE = "#441FFF";
+const RED = "#E8001C";
+const ORANGE = "#FF4B0A";
+const WHITE = "#FFFFFF";
+const MUTED = "rgba(255,255,255,0.35)";
+const DIM = "rgba(255,255,255,0.65)";
 
 const TABS = [
   { key: "meeting", label: "Meeting", icon: "calendar-outline", color: BLUE },
-  { key: "deadline", label: "Deadline", icon: "timer-outline", color: AMBER },
+  { key: "deadline", label: "Deadline", icon: "timer-outline", color: ORANGE },
   { key: "task", label: "Task", icon: "checkmark-outline", color: GREEN },
 ];
 
 const PRIORITIES = [
   { key: "low", label: "LOW", color: MUTED },
-  { key: "med", label: "MED", color: AMBER },
+  { key: "med", label: "MED", color: ORANGE },
   { key: "high", label: "HIGH", color: RED },
 ];
 
-// ── UNIFIED ADD MODAL ─────────────────────────────────────────
+// ── STORAGE ───────────────────────────────────────────────────
+const ROUTINE_KEY = "routine_items";
+const _get = async () => {
+  try {
+    const r = await AsyncStorage.getItem(ROUTINE_KEY);
+    return r ? JSON.parse(r) : { meetings: [], deadlines: [], tasks: [] };
+  } catch {
+    return { meetings: [], deadlines: [], tasks: [] };
+  }
+};
+const _save = async (m, d, t) => {
+  try {
+    await AsyncStorage.setItem(
+      ROUTINE_KEY,
+      JSON.stringify({ meetings: m, deadlines: d, tasks: t }),
+    );
+  } catch {}
+};
+const _reset = async () => {
+  try {
+    const raw = await AsyncStorage.getItem(ROUTINE_KEY);
+    if (!raw) return { meetings: [], deadlines: [], tasks: [] };
+    const s = JSON.parse(raw);
+    const cleared = {
+      meetings: (s.meetings || []).map((i) => ({ ...i, done: false })),
+      deadlines: (s.deadlines || []).map((i) => ({ ...i, done: false })),
+      tasks: (s.tasks || []).map((i) => ({ ...i, done: false })),
+    };
+    await AsyncStorage.setItem(ROUTINE_KEY, JSON.stringify(cleared));
+    return cleared;
+  } catch {
+    return { meetings: [], deadlines: [], tasks: [] };
+  }
+};
+
+// ── ADD MODAL ─────────────────────────────────────────────────
 function AddModal({ visible, defaultType, onSave, onClose }) {
   const [type, setType] = useState(defaultType || "task");
   const [title, setTitle] = useState("");
@@ -46,27 +82,23 @@ function AddModal({ visible, defaultType, onSave, onClose }) {
   React.useEffect(() => {
     if (visible && defaultType) setType(defaultType);
   }, [defaultType, visible]);
-
   const reset = () => {
     setTitle("");
     setWhen("");
     setPriority("med");
   };
-
   const handleSave = () => {
     if (!title.trim()) return;
     onSave({ title: title.trim(), date: when, time: "", type, priority });
     reset();
   };
-
   const handleClose = () => {
     reset();
     onClose();
   };
 
-  const cfg = TABS.find((t) => t.key === type);
-  const color = cfg?.color || GREEN;
-
+  const tab = TABS.find((t) => t.key === type);
+  const color = tab?.color || GREEN;
   const placeholder =
     type === "meeting"
       ? "What is the meeting about?"
@@ -92,23 +124,20 @@ function AddModal({ visible, defaultType, onSave, onClose }) {
         />
         <View style={m.sheet}>
           <View style={m.handle} />
-
-          {/* X close */}
           <TouchableOpacity style={m.closeBtn} onPress={handleClose}>
             <Ionicons name="close" size={16} color={MUTED} />
           </TouchableOpacity>
 
-          {/* Title with icon */}
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               gap: 10,
-              marginBottom: 4,
+              marginBottom: 6,
             }}
           >
             <Ionicons
-              name={cfg?.icon || "checkmark-outline"}
+              name={tab?.icon || "checkmark-outline"}
               size={20}
               color={color}
             />
@@ -117,18 +146,17 @@ function AddModal({ visible, defaultType, onSave, onClose }) {
             </Text>
           </View>
 
-          {/* Title */}
           <Text style={m.fieldLabel}>TITLE</Text>
           <TextInput
             style={m.input}
             placeholder={placeholder}
-            placeholderTextColor="#44445a"
+            placeholderTextColor="rgba(255,255,255,0.2)"
             value={title}
             onChangeText={setTitle}
             autoFocus
+            color={WHITE}
           />
 
-          {/* Date/time — meetings and deadlines only */}
           {type !== "task" && (
             <>
               <Text style={m.fieldLabel}>
@@ -137,26 +165,26 @@ function AddModal({ visible, defaultType, onSave, onClose }) {
               <TextInput
                 style={m.input}
                 placeholder="yyyy/mm/dd, --:--"
-                placeholderTextColor="#44445a"
+                placeholderTextColor="rgba(255,255,255,0.2)"
                 value={when}
                 onChangeText={setWhen}
+                color={WHITE}
               />
             </>
           )}
 
-          {/* Location — meetings only */}
           {type === "meeting" && (
             <>
               <Text style={m.fieldLabel}>LOCATION (OPTIONAL)</Text>
               <TextInput
                 style={m.input}
-                placeholder="Room, Zoom link, address..."
-                placeholderTextColor="#44445a"
+                placeholder="Room, Zoom link..."
+                placeholderTextColor="rgba(255,255,255,0.2)"
+                color={WHITE}
               />
             </>
           )}
 
-          {/* Priority — tasks only */}
           {type === "task" && (
             <>
               <Text style={m.fieldLabel}>PRIORITY</Text>
@@ -167,12 +195,11 @@ function AddModal({ visible, defaultType, onSave, onClose }) {
                     style={[
                       m.priorityBtn,
                       priority === pr.key && {
-                        backgroundColor: `${pr.color}22`,
+                        backgroundColor: `${pr.color}20`,
                         borderColor: pr.color,
                       },
                     ]}
                     onPress={() => setPriority(pr.key)}
-                    activeOpacity={0.8}
                   >
                     <Text
                       style={[
@@ -191,13 +218,8 @@ function AddModal({ visible, defaultType, onSave, onClose }) {
             </>
           )}
 
-          {/* Actions */}
           <View style={m.actions}>
-            <TouchableOpacity
-              style={m.cancelBtn}
-              onPress={handleClose}
-              activeOpacity={0.75}
-            >
+            <TouchableOpacity style={m.cancelBtn} onPress={handleClose}>
               <Text style={m.cancelTxt}>CANCEL</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -208,7 +230,6 @@ function AddModal({ visible, defaultType, onSave, onClose }) {
               ]}
               onPress={handleSave}
               disabled={!title.trim()}
-              activeOpacity={0.85}
             >
               <Text style={m.saveTxt}>SAVE</Text>
             </TouchableOpacity>
@@ -224,27 +245,22 @@ function ItemCard({ item, type, onToggle, onDelete }) {
   const tab = TABS.find((t) => t.key === type);
   const col = tab?.color || GREEN;
   return (
-    <View
-      style={[r.itemCard, { borderLeftColor: item.done ? `${col}30` : col }]}
-    >
+    <View style={[r.itemCard, { borderLeftColor: col }]}>
       <TouchableOpacity
-        style={[
-          r.check,
-          item.done && { backgroundColor: col, borderColor: col },
-        ]}
+        style={[r.check, { borderColor: `${col}60` }]}
         onPress={() => onToggle(item.id)}
         activeOpacity={0.7}
       >
-        {item.done && <Ionicons name="checkmark" size={13} color="#000" />}
+        {item.done && <Ionicons name="checkmark" size={12} color={col} />}
       </TouchableOpacity>
       <View style={{ flex: 1 }}>
-        <Text style={[r.itemTitle, item.done && r.itemDone]}>{item.title}</Text>
+        <Text style={r.itemTitle}>{item.title}</Text>
         {item.date ? <Text style={r.itemMeta}>{item.date}</Text> : null}
         {item.priority && item.priority !== "med" && (
           <Text
             style={[
               r.itemPriority,
-              { color: item.priority === "high" ? RED : MUTED },
+              { color: item.priority === "high" ? RED : ORANGE },
             ]}
           >
             {item.priority.toUpperCase()} PRIORITY
@@ -255,27 +271,27 @@ function ItemCard({ item, type, onToggle, onDelete }) {
         onPress={() => onDelete(item.id)}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <Ionicons name="close-outline" size={18} color={MUTED} />
+        <Ionicons name="close-outline" size={16} color={MUTED} />
       </TouchableOpacity>
     </View>
   );
 }
 
-// ── EMPTY STATE — dashed border card ─────────────────────────
+// ── EMPTY STATE ───────────────────────────────────────────────
 function EmptyState({ type }) {
   const tab = TABS.find((t) => t.key === type);
   const col = tab?.color || GREEN;
   return (
     <View style={r.emptyCard}>
-      <View style={[r.emptyIconWrap, { backgroundColor: `${col}18` }]}>
+      <View style={[r.emptyIcon, { backgroundColor: `${col}15` }]}>
         <Ionicons
           name={tab?.icon || "checkmark-circle-outline"}
-          size={26}
+          size={24}
           color={col}
         />
       </View>
       <Text style={r.emptyTxt}>No {tab?.label.toLowerCase()}s yet</Text>
-      <Text style={r.emptySub}>Tap the + to add one</Text>
+      <Text style={r.emptySub}>Tap + to add one</Text>
     </View>
   );
 }
@@ -286,13 +302,12 @@ function TaskTab({ items, onToggle, onDelete }) {
   const pct = items.length ? Math.round((done / items.length) * 100) : 0;
   return (
     <View style={r.tabContent}>
-      {/* Progress card */}
       <View style={r.progressCard}>
         <View style={r.progressRow}>
           <View>
             <Text style={r.progressTitle}>Tasks completed</Text>
             <Text style={r.progressSub}>
-              {items.length === 0 ? "Nothing logged today" : `${pct}% done`}
+              {items.length === 0 ? "Nothing added yet" : `${pct}% done`}
             </Text>
           </View>
           <View
@@ -300,14 +315,12 @@ function TaskTab({ items, onToggle, onDelete }) {
               r.countPill,
               {
                 borderColor:
-                  pct === 100 ? `${GREEN}50` : "rgba(255,255,255,0.15)",
+                  pct === 100 ? `${GREEN}50` : "rgba(255,255,255,0.12)",
               },
             ]}
           >
-            <Text
-              style={[r.countTxt, { color: pct === 100 ? GREEN : COLORS.text }]}
-            >
-              {done} / {items.length}
+            <Text style={[r.countTxt, { color: pct === 100 ? GREEN : WHITE }]}>
+              {done}/{items.length}
             </Text>
           </View>
         </View>
@@ -317,14 +330,12 @@ function TaskTab({ items, onToggle, onDelete }) {
               r.progressFill,
               {
                 width: `${pct}%`,
-                backgroundColor: pct === 100 ? GREEN : `${GREEN}80`,
+                backgroundColor: pct === 100 ? GREEN : `${GREEN}70`,
               },
             ]}
           />
         </View>
       </View>
-
-      {/* Empty or list */}
       {items.length === 0 ? (
         <EmptyState type="task" />
       ) : (
@@ -342,7 +353,7 @@ function TaskTab({ items, onToggle, onDelete }) {
   );
 }
 
-// ── OVERVIEW STRIP — matches Lovable's TODAY'S OVERVIEW ───────
+// ── OVERVIEW STRIP ────────────────────────────────────────────
 function OverviewStrip({ meetings, deadlines, tasks }) {
   const rows = [
     { tab: TABS[0], items: meetings },
@@ -355,11 +366,10 @@ function OverviewStrip({ meetings, deadlines, tasks }) {
     0,
   );
   const pct = total ? Math.round((done / total) * 100) : 0;
-  const col = pct >= 70 ? GREEN : pct >= 40 ? AMBER : RED;
-
+  const col = pct >= 70 ? GREEN : pct >= 40 ? ORANGE : RED;
   return (
     <View style={r.overviewCard}>
-      <Text style={r.secLabel}>TODAY'S OVERVIEW</Text>
+      <Text style={r.overviewSectionLabel}>TODAY'S OVERVIEW</Text>
       <View style={r.overviewHeader}>
         <Text style={r.overviewTitle}>Overall completion</Text>
         <Text style={[r.overviewPct, { color: col }]}>{pct}%</Text>
@@ -369,7 +379,7 @@ function OverviewStrip({ meetings, deadlines, tasks }) {
         const p = items.length ? Math.round((d / items.length) * 100) : 0;
         return (
           <View key={tab.key} style={r.overviewRow}>
-            <Ionicons name={tab.icon} size={14} color={tab.color} />
+            <Ionicons name={tab.icon} size={13} color={tab.color} />
             <View style={r.overviewTrack}>
               <View
                 style={[
@@ -388,45 +398,6 @@ function OverviewStrip({ meetings, deadlines, tasks }) {
   );
 }
 
-// ── Inline storage helpers (no external store dependency) ─────
-const ROUTINE_KEY = "routine_items";
-
-const _routineGet = async () => {
-  try {
-    const raw = await AsyncStorage.getItem(ROUTINE_KEY);
-    if (!raw) return { meetings: [], deadlines: [], tasks: [] };
-    return JSON.parse(raw);
-  } catch {
-    return { meetings: [], deadlines: [], tasks: [] };
-  }
-};
-
-const _routineSave = async (meetings, deadlines, tasks) => {
-  try {
-    await AsyncStorage.setItem(
-      ROUTINE_KEY,
-      JSON.stringify({ meetings, deadlines, tasks }),
-    );
-  } catch {}
-};
-
-const _routineReset = async () => {
-  try {
-    const raw = await AsyncStorage.getItem(ROUTINE_KEY);
-    if (!raw) return { meetings: [], deadlines: [], tasks: [] };
-    const s = JSON.parse(raw);
-    const cleared = {
-      meetings: (s.meetings || []).map((i) => ({ ...i, done: false })),
-      deadlines: (s.deadlines || []).map((i) => ({ ...i, done: false })),
-      tasks: (s.tasks || []).map((i) => ({ ...i, done: false })),
-    };
-    await AsyncStorage.setItem(ROUTINE_KEY, JSON.stringify(cleared));
-    return cleared;
-  } catch {
-    return { meetings: [], deadlines: [], tasks: [] };
-  }
-};
-
 // ── MAIN SCREEN ───────────────────────────────────────────────
 export default function RoutineScreen({ navigation, route }) {
   const defaultTab = route?.params?.defaultTab;
@@ -438,16 +409,14 @@ export default function RoutineScreen({ navigation, route }) {
   const [modalType, setModalType] = useState("task");
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load persisted data on mount
   useEffect(() => {
-    _routineGet().then(({ meetings: m, deadlines: d, tasks: t }) => {
+    _get().then(({ meetings: m, deadlines: d, tasks: t }) => {
       setMeetings(m || []);
       setDeadlines(d || []);
       setTasks(t || []);
     });
   }, []);
 
-  // Auto-open modal when arriving from Today FAB
   React.useEffect(() => {
     if (defaultTab) {
       setActiveTab(defaultTab);
@@ -464,10 +433,9 @@ export default function RoutineScreen({ navigation, route }) {
     setModalVisible(true);
   };
 
-  // Pull-to-refresh resets all done flags — user starts fresh
   const onRefresh = async () => {
     setRefreshing(true);
-    const cleared = await _routineReset();
+    const cleared = await _reset();
     setMeetings(cleared.meetings || []);
     setDeadlines(cleared.deadlines || []);
     setTasks(cleared.tasks || []);
@@ -482,12 +450,11 @@ export default function RoutineScreen({ navigation, route }) {
     setMeetings(m);
     setDeadlines(d);
     setTasks(t);
-    _routineSave(m, d, t);
+    _save(m, d, t);
     setModalVisible(false);
   };
 
   const handleToggle = (type, id) => {
-    // Mark as done (kept in store for XP calculation) — display filters them out
     const m =
       type === "meeting"
         ? meetings.map((i) => (i.id === id ? { ...i, done: true } : i))
@@ -503,7 +470,7 @@ export default function RoutineScreen({ navigation, route }) {
     setMeetings(m);
     setDeadlines(d);
     setTasks(t);
-    _routineSave(m, d, t);
+    _save(m, d, t);
   };
 
   const handleDelete = (type, id) => {
@@ -515,7 +482,7 @@ export default function RoutineScreen({ navigation, route }) {
     setMeetings(m);
     setDeadlines(d);
     setTasks(t);
-    _routineSave(m, d, t);
+    _save(m, d, t);
   };
 
   const total = meetings.length + deadlines.length + tasks.length;
@@ -525,38 +492,28 @@ export default function RoutineScreen({ navigation, route }) {
     tasks.filter((i) => i.done).length;
   const overallScore = total ? Math.round((done / total) * 100) : 0;
   const scoreColor =
-    overallScore >= 70 ? GREEN : overallScore >= 40 ? AMBER : RED;
+    overallScore >= 70 ? GREEN : overallScore >= 40 ? ORANGE : RED;
 
   return (
     <SafeAreaView style={r.root} edges={["top"]}>
-      {/* Header */}
-      <View style={r.header}>
+      {/* ── BLUE HEADER ── */}
+      <View style={r.headerBlock}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={r.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={GREEN} />
+          <Ionicons name="arrow-back" size={22} color={WHITE} />
         </TouchableOpacity>
-        <View style={{ flex: 1, marginLeft: 12 }}>
+        <View style={{ flex: 1, marginLeft: 10 }}>
           <Text style={r.title}>ROUTINE</Text>
           <Text style={r.sub}>
-            {total ? `${done} of ${total} items done` : "Nothing planned yet"}
+            {total ? `${done} of ${total} done` : "Nothing planned yet"}
           </Text>
         </View>
-        <View
-          style={[
-            r.scorePill,
-            {
-              borderColor: `${scoreColor}40`,
-              backgroundColor: `${scoreColor}12`,
-            },
-          ]}
-        >
-          <Text style={[r.scoreNum, { color: scoreColor }]}>
-            {overallScore}
-          </Text>
-          <Text style={[r.scorePct, { color: scoreColor }]}>%</Text>
+        <View style={r.scorePill}>
+          <Text style={r.scoreNum}>{overallScore}</Text>
+          <Text style={r.scorePct}>%</Text>
         </View>
       </View>
 
-      {/* Tab bar */}
+      {/* ── TAB BAR ── */}
       <View style={r.tabBar}>
         {TABS.map((tab) => {
           const active = activeTab === tab.key;
@@ -566,12 +523,12 @@ export default function RoutineScreen({ navigation, route }) {
               key={tab.key}
               style={[r.tabBtn, active && { backgroundColor: tab.color }]}
               onPress={() => setActiveTab(tab.key)}
-              activeOpacity={0.75}
+              activeOpacity={0.8}
             >
               <Ionicons
                 name={tab.icon}
-                size={15}
-                color={active ? "#000" : MUTED}
+                size={14}
+                color={active ? WHITE : MUTED}
               />
               <Text style={[r.tabLabel, active && r.tabLabelActive]}>
                 {tab.label}
@@ -583,7 +540,7 @@ export default function RoutineScreen({ navigation, route }) {
                     active && { backgroundColor: "rgba(0,0,0,0.2)" },
                   ]}
                 >
-                  <Text style={[r.badgeTxt, active && { color: "#000" }]}>
+                  <Text style={[r.badgeTxt, active && { color: WHITE }]}>
                     {count}
                   </Text>
                 </View>
@@ -593,7 +550,6 @@ export default function RoutineScreen({ navigation, route }) {
         })}
       </View>
 
-      {/* Content */}
       <ScrollView
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
@@ -601,7 +557,7 @@ export default function RoutineScreen({ navigation, route }) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={GREEN}
+            tintColor={BLUE}
           />
         }
       >
@@ -657,13 +613,13 @@ export default function RoutineScreen({ navigation, route }) {
         />
       </ScrollView>
 
-      {/* Simple + FAB — matches Lovable screenshot */}
+      {/* ── FAB ── */}
       <TouchableOpacity
         style={r.fab}
         onPress={() => openModal(activeTab)}
         activeOpacity={0.85}
       >
-        <Ionicons name="add" size={30} color="#000" />
+        <Ionicons name="add" size={28} color={WHITE} />
       </TouchableOpacity>
 
       <AddModal
@@ -678,56 +634,65 @@ export default function RoutineScreen({ navigation, route }) {
 
 // ── STYLES ────────────────────────────────────────────────────
 const r = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.bg },
-  header: {
+  root: { flex: 1, backgroundColor: BG },
+  headerBlock: {
+    backgroundColor: BLUE,
+    marginHorizontal: 14,
+    marginTop: 14,
+    borderRadius: 20,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 12,
+    padding: 16,
   },
   backBtn: { padding: 4 },
   title: {
-    fontSize: 16,
+    fontSize: 22,
     fontFamily: "Orbitron",
-    color: GREEN,
+    color: WHITE,
     letterSpacing: 1.5,
+    lineHeight: 24,
   },
-  sub: { fontSize: 10, color: MUTED, marginTop: 2 },
+  sub: {
+    fontSize: 10,
+    color: "rgba(255,255,255,0.5)",
+    fontWeight: "500",
+    marginTop: 2,
+  },
   scorePill: {
     flexDirection: "row",
     alignItems: "baseline",
+    backgroundColor: "rgba(0,0,0,0.18)",
     borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  scoreNum: { fontSize: 22, fontWeight: "900" },
-  scorePct: { fontSize: 12, fontWeight: "700" },
-
+  scoreNum: { fontSize: 22, fontWeight: "900", color: WHITE },
+  scorePct: { fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.6)" },
   tabBar: {
     flexDirection: "row",
-    marginHorizontal: 16,
-    marginBottom: 16,
+    marginHorizontal: 14,
+    marginTop: 10,
+    marginBottom: 12,
     backgroundColor: "rgba(255,255,255,0.04)",
     borderRadius: 16,
     padding: 4,
+    gap: 4,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(255,255,255,0.07)",
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 11,
+    paddingVertical: 10,
     alignItems: "center",
     borderRadius: 13,
     flexDirection: "row",
     justifyContent: "center",
-    gap: 5,
+    gap: 4,
   },
-  tabLabel: { fontSize: 11, fontWeight: "700", color: MUTED },
-  tabLabelActive: { color: "#000" },
+  tabLabel: { fontSize: 10, fontWeight: "700", color: MUTED },
+  tabLabelActive: { color: WHITE },
   badge: {
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 8,
     paddingHorizontal: 5,
     paddingVertical: 1,
@@ -735,120 +700,100 @@ const r = StyleSheet.create({
     alignItems: "center",
   },
   badgeTxt: { fontSize: 9, fontWeight: "800", color: MUTED },
-
-  tabContent: { paddingHorizontal: 16, paddingTop: 4 },
-
-  // Task progress card
-  progressCard: {
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    marginBottom: 14,
-  },
-  progressRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  progressTitle: { fontSize: 15, fontWeight: "700", color: COLORS.text },
-  progressSub: { fontSize: 11, color: MUTED, marginTop: 3 },
-  countPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1,
-    backgroundColor: "rgba(255,255,255,0.05)",
-  },
-  countTxt: { fontSize: 14, fontWeight: "900" },
-  progressTrack: {
-    height: 4,
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 2,
-    overflow: "hidden",
-  },
-  progressFill: { height: "100%", borderRadius: 2 },
-
-  // Empty state — dashed border
-  emptyCard: {
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.15)",
-    borderStyle: "dashed",
-    borderRadius: 18,
-    padding: 40,
-    alignItems: "center",
-    marginBottom: 14,
-  },
-  emptyIconWrap: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 14,
-  },
-  emptyTxt: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 6,
-  },
-  emptySub: { fontSize: 12, color: MUTED },
-
-  // Item cards
+  tabContent: { paddingHorizontal: 14, paddingTop: 4 },
   itemCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 14,
+    padding: 13,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(255,255,255,0.07)",
     borderLeftWidth: 3,
   },
   check: {
-    width: 24,
-    height: 24,
-    borderRadius: 7,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.2)",
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },
-  itemTitle: {
-    fontSize: 13,
-    color: COLORS.text,
-    fontWeight: "600",
-    marginBottom: 2,
-  },
+  itemTitle: { fontSize: 13, color: WHITE, fontWeight: "600", marginBottom: 2 },
   itemDone: { color: MUTED, textDecorationLine: "line-through", opacity: 0.5 },
   itemMeta: { fontSize: 10, color: MUTED },
   itemPriority: {
     fontSize: 9,
     fontWeight: "700",
     letterSpacing: 0.5,
-    marginTop: 3,
+    marginTop: 2,
   },
-
-  // Overview strip
+  emptyCard: {
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.1)",
+    borderStyle: "dashed",
+    borderRadius: 16,
+    padding: 36,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  emptyIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  emptyTxt: { fontSize: 14, fontWeight: "700", color: WHITE, marginBottom: 4 },
+  emptySub: { fontSize: 12, color: MUTED },
+  progressCard: {
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+    marginBottom: 12,
+  },
+  progressRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  progressTitle: { fontSize: 14, fontWeight: "700", color: WHITE },
+  progressSub: { fontSize: 10, color: MUTED, marginTop: 2 },
+  countPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  countTxt: { fontSize: 14, fontWeight: "900" },
+  progressTrack: {
+    height: 4,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  progressFill: { height: "100%", borderRadius: 2 },
   overviewCard: {
-    marginHorizontal: 16,
+    marginHorizontal: 14,
     marginTop: 8,
     marginBottom: 12,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 18,
-    padding: 16,
+    backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(255,255,255,0.07)",
   },
-  secLabel: {
+  overviewSectionLabel: {
     fontSize: 9,
     color: MUTED,
-    letterSpacing: 2,
+    letterSpacing: 2.5,
     fontWeight: "700",
     marginBottom: 12,
   },
@@ -856,32 +801,30 @@ const r = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: 12,
   },
-  overviewTitle: { fontSize: 14, fontWeight: "700", color: COLORS.text },
-  overviewPct: { fontSize: 18, fontWeight: "900" },
+  overviewTitle: { fontSize: 13, fontWeight: "700", color: WHITE },
+  overviewPct: { fontSize: 16, fontWeight: "900" },
   overviewRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 10,
+    gap: 8,
+    marginBottom: 8,
   },
   overviewTrack: {
     flex: 1,
-    height: 5,
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 3,
+    height: 4,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 2,
     overflow: "hidden",
   },
-  overviewFill: { height: "100%", borderRadius: 3 },
+  overviewFill: { height: "100%", borderRadius: 2 },
   overviewCount: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
-    width: 30,
+    width: 28,
     textAlign: "right",
   },
-
-  // Simple FAB
   fab: {
     position: "absolute",
     bottom: 28,
@@ -895,28 +838,27 @@ const r = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     shadowColor: GREEN,
-    shadowOpacity: 0.45,
+    shadowOpacity: 0.5,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
   },
 });
 
-// ── MODAL STYLES ──────────────────────────────────────────────
 const m = StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end" },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.72)",
+    backgroundColor: "rgba(0,0,0,0.75)",
   },
   sheet: {
-    backgroundColor: "#0d0d1a",
+    backgroundColor: "#0d0d2a",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 24,
     paddingBottom: 44,
     borderTopWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.08)",
   },
   handle: {
     width: 40,
@@ -930,17 +872,16 @@ const m = StyleSheet.create({
     position: "absolute",
     top: 20,
     right: 20,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: "rgba(255,255,255,0.08)",
     alignItems: "center",
     justifyContent: "center",
   },
   sheetTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: "Orbitron",
-    color: GREEN,
     letterSpacing: 2,
     marginBottom: 4,
   },
@@ -949,25 +890,24 @@ const m = StyleSheet.create({
     color: MUTED,
     letterSpacing: 2,
     fontWeight: "700",
-    marginBottom: 8,
-    marginTop: 16,
+    marginBottom: 7,
+    marginTop: 14,
   },
   input: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 14,
-    padding: 14,
-    color: COLORS.text,
+    padding: 13,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.09)",
     fontSize: 14,
   },
   priorityRow: { flexDirection: "row", gap: 10 },
   priorityBtn: {
     flex: 1,
-    paddingVertical: 13,
+    paddingVertical: 12,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderColor: "rgba(255,255,255,0.1)",
     backgroundColor: "rgba(255,255,255,0.04)",
     alignItems: "center",
   },
@@ -977,13 +917,13 @@ const m = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.5,
   },
-  actions: { flexDirection: "row", gap: 12, marginTop: 20 },
+  actions: { flexDirection: "row", gap: 12, marginTop: 18 },
   cancelBtn: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 15,
     borderRadius: 16,
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
   },
@@ -995,10 +935,9 @@ const m = StyleSheet.create({
   },
   saveBtn: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 15,
     borderRadius: 16,
     alignItems: "center",
-    backgroundColor: GREEN,
   },
-  saveTxt: { fontSize: 12, fontWeight: "900", color: "#000", letterSpacing: 1 },
+  saveTxt: { fontSize: 12, fontWeight: "900", color: WHITE, letterSpacing: 1 },
 });

@@ -1,5 +1,5 @@
-// 4-slide onboarding flow shown only on first app launch.
-import React, { useRef, useState, useEffect } from "react";
+// screens/OnboardingScreen.js — 1Life Hub
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -11,13 +11,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Svg, { Path, Circle, Ellipse, G } from "react-native-svg";
-import { COLORS } from "../constants/colors";
 
 const { width, height } = Dimensions.get("window");
-const GREEN = COLORS.neonGreen;
-const PURPLE = COLORS.neonPurple;
-const BLUE = COLORS.neonBlue;
-const AMBER = COLORS.neonAmber;
+const BG = "#130101";
+const GREEN = "#00B85C";
+const BLUE = "#441FFF";
+const RED = "#E8001C";
+const ORANGE = "#FF4B0A";
+const WHITE = "#FFFFFF";
 
 const SLIDES = [
   {
@@ -25,7 +26,6 @@ const SLIDES = [
     title: "Welcome to\n1Life Hub",
     sub: "Your personal growth tracker.\nBuilt around your life.",
     accent: GREEN,
-    tip: null,
     plantXP: 0,
   },
   {
@@ -33,449 +33,303 @@ const SLIDES = [
     title: "Build Daily\nHabits",
     sub: "Log your habits every day.\nEach one feeds your plant.",
     accent: GREEN,
-    tip: "🌿  Habit → XP → Growth",
     plantXP: 150,
   },
   {
     id: 2,
-    title: "Track Your\nHealth & Goals",
-    sub: "Log sleep, water and movement.\nSet weekly, monthly and yearly goals.",
-    accent: BLUE,
-    tip: "💧  Sleep · Water · Movement",
+    title: "Track Health\n& Goals",
+    sub: "Log sleep, water and movement.\nSet goals across every area.",
+    accent: RED,
     plantXP: 350,
   },
   {
     id: 3,
     title: "Watch\nYourself Grow",
-    sub: "Your plant reflects your progress\nacross every area of your life.",
-    accent: PURPLE,
-    tip: null,
+    sub: "Your plant reflects your progress\nacross every area of life.",
+    accent: BLUE,
     plantXP: 500,
   },
 ];
 
-// ── Mini plant SVG ────────────────────────────────────────────
 function PlantStage({ xp, accent }) {
-  const W = width * 0.7;
-  const H = 220;
+  const W = width * 0.65;
+  const H = 200;
   const pct = Math.min(xp / 500, 1);
   const cx = W / 2;
-  const groundY = H - 20;
-  const trunkH = 40 + pct * 80;
-  const trunkTopY = groundY - trunkH;
-  const canopyR = 20 + pct * 55;
-  const branchSpan = 30 + pct * 55;
-
-  const bloomDomains =
-    xp >= 150
-      ? xp >= 350
-        ? ["physical", "mental", "financial", "spiritual"]
-        : ["physical", "mental"]
-      : [];
-
-  const BLOOM_COLORS = {
-    physical: GREEN,
-    mental: BLUE,
-    financial: AMBER,
-    spiritual: PURPLE,
-  };
-  const BLOOM_POS = [
-    { x: W * 0.5, y: H * 0.2 },
-    { x: W * 0.3, y: H * 0.3 },
-    { x: W * 0.7, y: H * 0.3 },
-    { x: W * 0.22, y: H * 0.44 },
-  ];
-
-  const safeAccent = accent || GREEN;
+  const gY = H - 16;
+  const tH = 36 + pct * 72;
+  const tTY = gY - tH;
+  const cR = 18 + pct * 50;
+  const bS = 26 + pct * 50;
 
   return (
     <Svg width={W} height={H}>
       <Ellipse
         cx={cx}
-        cy={groundY + 6}
-        rx={50}
-        ry={7}
-        fill={`${safeAccent}15`}
+        cy={gY + 5}
+        rx={42 + pct * 22}
+        ry={8}
+        fill={`${GREEN}20`}
       />
-
-      {pct > 0 && (
-        <Path
-          d={`M${cx - 6},${groundY} C${cx - 4},${trunkTopY + 25} ${cx + 3},${trunkTopY + 15} ${cx},${trunkTopY}`}
-          stroke="#5a3a1a"
-          strokeWidth={pct > 0.3 ? 12 : 8}
-          fill="none"
-          strokeLinecap="round"
-        />
-      )}
-
-      {pct > 0.2 && (
-        <>
-          <Path
-            d={`M${cx},${trunkTopY + 18} C${cx - branchSpan * 0.5},${trunkTopY + 8} ${cx - branchSpan},${trunkTopY - 5} ${cx - branchSpan},${trunkTopY - 14}`}
-            stroke="#5a3a1a"
-            strokeWidth={5}
-            fill="none"
-            strokeLinecap="round"
-          />
-          <Path
-            d={`M${cx},${trunkTopY + 13} C${cx + branchSpan * 0.5},${trunkTopY + 4} ${cx + branchSpan},${trunkTopY - 9} ${cx + branchSpan},${trunkTopY - 18}`}
-            stroke="#5a3a1a"
-            strokeWidth={5}
-            fill="none"
-            strokeLinecap="round"
-          />
-        </>
-      )}
-
-      {pct > 0.05 && (
-        <>
-          <Ellipse
-            cx={cx}
-            cy={trunkTopY}
-            rx={canopyR + 5}
-            ry={canopyR * 0.65 + 3}
-            fill="rgba(0,120,60,0.18)"
-          />
-          <Ellipse
-            cx={cx}
-            cy={trunkTopY}
-            rx={canopyR}
-            ry={canopyR * 0.65}
-            fill={`rgba(0,180,80,${0.15 + pct * 0.25})`}
-          />
-          <Ellipse
-            cx={cx - canopyR * 0.7}
-            cy={trunkTopY + canopyR * 0.1}
-            rx={canopyR * 0.5}
-            ry={canopyR * 0.42}
-            fill={`rgba(0,160,70,${0.12 + pct * 0.2})`}
-          />
-          <Ellipse
-            cx={cx + canopyR * 0.7}
-            cy={trunkTopY + canopyR * 0.05}
-            rx={canopyR * 0.5}
-            ry={canopyR * 0.42}
-            fill={`rgba(0,160,70,${0.12 + pct * 0.2})`}
-          />
-        </>
-      )}
-
       {pct === 0 && (
-        <>
-          <Ellipse cx={cx} cy={groundY - 8} rx={10} ry={14} fill="#5a3a1a" />
+        <G>
+          <Ellipse cx={cx} cy={gY - 8} rx={9} ry={12} fill="#3d2a10" />
           <Path
-            d={`M${cx},${groundY - 22} C${cx - 6},${groundY - 34} ${cx + 6},${groundY - 34} ${cx},${groundY - 22}`}
+            d={`M${cx},${gY - 20} C${cx - 6},${gY - 30} ${cx + 6},${gY - 30} ${cx},${gY - 20}`}
             stroke={GREEN}
             strokeWidth={2}
             fill="none"
             strokeLinecap="round"
           />
-        </>
+          <Path
+            d={`M${cx},${gY - 22} L${cx},${gY - 34}`}
+            stroke={GREEN}
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
+        </G>
       )}
-
-      {bloomDomains.map((d, i) => {
-        const pos = BLOOM_POS[i];
-        const color = BLOOM_COLORS[d];
-        return (
-          <G key={d}>
-            <Circle cx={pos.x} cy={pos.y} r={11} fill={`${color}22`} />
-            <Circle cx={pos.x} cy={pos.y} r={6.5} fill={color} opacity={0.9} />
-            <Circle
-              cx={pos.x - 2}
-              cy={pos.y - 2}
-              r={1.8}
-              fill="rgba(255,255,255,0.6)"
-            />
-          </G>
-        );
-      })}
+      {pct > 0 && (
+        <G>
+          <Path
+            d={`M${cx - 5},${gY} C${cx - 3},${tTY + 24} ${cx + 3},${tTY + 16} ${cx},${tTY}`}
+            stroke="#3d2a10"
+            strokeWidth={7 + pct * 7}
+            fill="none"
+            strokeLinecap="round"
+          />
+        </G>
+      )}
+      {pct > 0.1 && (
+        <G>
+          <Path
+            d={`M${cx},${tTY + 18} C${cx - bS * 0.4},${tTY + 10} ${cx - bS * 0.8},${tTY - 3} ${cx - bS},${tTY - 14}`}
+            stroke="#3d2a10"
+            strokeWidth={4 + pct * 2}
+            fill="none"
+            strokeLinecap="round"
+          />
+          <Path
+            d={`M${cx},${tTY + 13} C${cx + bS * 0.4},${tTY + 5} ${cx + bS * 0.8},${tTY - 8} ${cx + bS},${tTY - 18}`}
+            stroke="#3d2a10"
+            strokeWidth={4 + pct * 2}
+            fill="none"
+            strokeLinecap="round"
+          />
+        </G>
+      )}
+      {pct > 0.04 && (
+        <G>
+          <Ellipse
+            cx={cx}
+            cy={tTY}
+            rx={cR + 8}
+            ry={cR * 0.58 + 4}
+            fill={`rgba(0,80,40,0.15)`}
+          />
+          <Ellipse
+            cx={cx - cR * 0.6}
+            cy={tTY + cR * 0.1}
+            rx={cR * 0.48}
+            ry={cR * 0.4}
+            fill={`rgba(0,140,65,${0.18 + pct * 0.15})`}
+          />
+          <Ellipse
+            cx={cx + cR * 0.6}
+            cy={tTY + cR * 0.07}
+            rx={cR * 0.48}
+            ry={cR * 0.4}
+            fill={`rgba(0,140,65,${0.18 + pct * 0.15})`}
+          />
+          <Ellipse
+            cx={cx}
+            cy={tTY}
+            rx={cR}
+            ry={cR * 0.65}
+            fill={`rgba(0,160,75,${0.25 + pct * 0.18})`}
+          />
+          <Ellipse
+            cx={cx}
+            cy={tTY}
+            rx={cR * 0.6}
+            ry={cR * 0.45}
+            fill={`rgba(0,184,92,${0.2 + pct * 0.15})`}
+          />
+        </G>
+      )}
+      {xp >= 150 && (
+        <Circle
+          cx={cx - cR * 0.3}
+          cy={tTY - cR * 0.3}
+          r={5}
+          fill={GREEN}
+          opacity={0.9}
+        />
+      )}
+      {xp >= 300 && (
+        <Circle
+          cx={cx + cR * 0.5}
+          cy={tTY - cR * 0.15}
+          r={4}
+          fill={BLUE}
+          opacity={0.9}
+        />
+      )}
+      {xp >= 400 && (
+        <Circle
+          cx={cx - cR * 0.1}
+          cy={tTY - cR * 0.55}
+          r={3.5}
+          fill={ORANGE}
+          opacity={0.85}
+        />
+      )}
+      {xp >= 500 && (
+        <Circle
+          cx={cx + cR * 0.2}
+          cy={tTY + cR * 0.2}
+          r={4}
+          fill={RED}
+          opacity={0.9}
+        />
+      )}
     </Svg>
   );
 }
 
-// ── Floating particle ─────────────────────────────────────────
-function Particle({ color, delay, startX, startY }) {
-  const y = useRef(new Animated.Value(0)).current;
-  const op = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.delay(delay),
-        Animated.parallel([
-          Animated.timing(y, {
-            toValue: -40,
-            duration: 2200,
-            useNativeDriver: true,
-          }),
-          Animated.sequence([
-            Animated.timing(op, {
-              toValue: 0.7,
-              duration: 600,
-              useNativeDriver: true,
-            }),
-            Animated.timing(op, {
-              toValue: 0,
-              duration: 1600,
-              useNativeDriver: true,
-            }),
-          ]),
-        ]),
-        Animated.parallel([
-          Animated.timing(y, {
-            toValue: 0,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-          Animated.timing(op, {
-            toValue: 0,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]),
-    ).start();
-  }, []);
-
-  return (
-    <Animated.View
-      style={{
-        position: "absolute",
-        left: startX,
-        top: startY,
-        width: 5,
-        height: 5,
-        borderRadius: 3,
-        backgroundColor: color,
-        opacity: op,
-        transform: [{ translateY: y }],
-      }}
-    />
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
-// ONBOARDING SCREEN
-// ─────────────────────────────────────────────────────────────
 export default function OnboardingScreen({ onDone }) {
-  const [current, setCurrent] = useState(0);
+  const [idx, setIdx] = useState(0);
+  const fade = useRef(new Animated.Value(1)).current;
 
-  const fadeTitle = useRef(new Animated.Value(0)).current;
-  const scaleBtn = useRef(new Animated.Value(1)).current;
-  const plantScale = useRef(new Animated.Value(0.7)).current;
-
-  // ── Safety: clamp current to valid range ──────────────────
-  const safeIdx = Math.max(0, Math.min(current, SLIDES.length - 1));
-  const slide = SLIDES[safeIdx]; // always defined
-  const isLast = safeIdx === SLIDES.length - 1;
-
-  useEffect(() => {
-    fadeTitle.setValue(0);
-    plantScale.setValue(0.7);
-    Animated.parallel([
-      Animated.timing(fadeTitle, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-      Animated.spring(plantScale, {
-        toValue: 1,
-        friction: 5,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [current]);
-
-  const next = () => {
-    if (isLast) {
-      handleDone();
+  const next = async () => {
+    if (idx < SLIDES.length - 1) {
+      Animated.sequence([
+        Animated.timing(fade, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fade, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start(() => setIdx((i) => i + 1));
     } else {
-      Animated.timing(fadeTitle, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start(() => setCurrent((c) => Math.min(c + 1, SLIDES.length - 1)));
+      await AsyncStorage.setItem("onboarding_done", "true");
+      onDone();
     }
   };
 
-  const handleDone = async () => {
-    await AsyncStorage.setItem("onboarding_done", "true");
-    if (typeof onDone === "function") onDone();
-    Animated.sequence([
-      Animated.spring(scaleBtn, { toValue: 0.92, useNativeDriver: true }),
-      Animated.spring(scaleBtn, { toValue: 1, useNativeDriver: true }),
-    ]).start();
-  };
-
-  const particles = [
-    { color: GREEN, delay: 0, startX: width * 0.2, startY: height * 0.38 },
-    { color: BLUE, delay: 700, startX: width * 0.6, startY: height * 0.32 },
-    { color: AMBER, delay: 1400, startX: width * 0.75, startY: height * 0.42 },
-    { color: PURPLE, delay: 400, startX: width * 0.25, startY: height * 0.45 },
-    { color: GREEN, delay: 1100, startX: width * 0.5, startY: height * 0.28 },
-  ];
+  const slide = SLIDES[idx];
+  const accent = slide.accent;
 
   return (
-    <SafeAreaView style={s.container}>
-      {/* Background glow */}
-      <Animated.View
-        style={[s.bgGlow, { backgroundColor: `${slide.accent}12` }]}
-      />
+    <SafeAreaView
+      style={[ob.root, { backgroundColor: BG }]}
+      edges={["top", "bottom"]}
+    >
+      {/* Accent block — top portion */}
+      <View style={[ob.accentBlock, { backgroundColor: accent }]}>
+        <Animated.View style={[ob.plantWrap, { opacity: fade }]}>
+          <PlantStage xp={slide.plantXP} accent={accent} />
+        </Animated.View>
+      </View>
 
-      {/* Floating particles (slide 1+) */}
-      {current > 0 && particles.map((p, i) => <Particle key={i} {...p} />)}
+      {/* Content area */}
+      <Animated.View style={[ob.content, { opacity: fade }]}>
+        <Text style={ob.title}>{slide.title}</Text>
+        <Text style={ob.sub}>{slide.sub}</Text>
+      </Animated.View>
 
-      {/* Progress dots */}
-      <View style={s.dots}>
+      {/* Dots */}
+      <View style={ob.dots}>
         {SLIDES.map((_, i) => (
           <View
             key={i}
             style={[
-              s.dot,
-              i === current && { backgroundColor: slide.accent, width: 20 },
-              i < current && { backgroundColor: `${slide.accent}60` },
+              ob.dot,
+              i === idx && [ob.dotActive, { backgroundColor: accent }],
             ]}
           />
         ))}
       </View>
 
-      {/* Plant */}
-      <Animated.View
-        style={[s.plantWrap, { transform: [{ scale: plantScale }] }]}
-      >
-        <PlantStage xp={slide.plantXP} accent={slide.accent} />
-        <View
-          style={[
-            s.stagePill,
-            {
-              borderColor: `${slide.accent}40`,
-              backgroundColor: `${slide.accent}12`,
-            },
-          ]}
-        >
-          <Text style={[s.stageTxt, { color: slide.accent }]}>
-            {slide.plantXP === 0
-              ? "SEED"
-              : slide.plantXP < 200
-                ? "SEEDLING"
-                : slide.plantXP < 450
-                  ? "GROWING"
-                  : "BLOOMED"}
-          </Text>
-        </View>
-      </Animated.View>
-
-      {/* Text */}
-      <Animated.View style={[s.textWrap, { opacity: fadeTitle }]}>
-        <Text style={[s.title, { color: slide.accent }]}>{slide.title}</Text>
-        <Text style={s.sub}>{slide.sub}</Text>
-        {slide.tip && (
-          <View
-            style={[
-              s.tipPill,
-              {
-                backgroundColor: `${slide.accent}14`,
-                borderColor: `${slide.accent}30`,
-              },
-            ]}
-          >
-            <Text style={[s.tipTxt, { color: slide.accent }]}>{slide.tip}</Text>
-          </View>
-        )}
-      </Animated.View>
-
-      {/* Button */}
-      <Animated.View style={[s.btnWrap, { transform: [{ scale: scaleBtn }] }]}>
+      {/* CTA */}
+      <View style={ob.footer}>
         <TouchableOpacity
-          style={[s.btn, { backgroundColor: slide.accent }]}
+          style={[ob.btn, { backgroundColor: accent }]}
           onPress={next}
           activeOpacity={0.85}
         >
-          <Text style={s.btnTxt}>{isLast ? "GET STARTED  🌱" : "NEXT  →"}</Text>
+          <Text style={[ob.btnTxt, { color: accent === GREEN ? BG : WHITE }]}>
+            {idx < SLIDES.length - 1 ? "NEXT" : "GET STARTED"}
+          </Text>
         </TouchableOpacity>
-        {!isLast && (
-          <TouchableOpacity onPress={handleDone} style={s.skipBtn}>
-            <Text style={s.skipTxt}>Skip</Text>
+        {idx < SLIDES.length - 1 && (
+          <TouchableOpacity
+            onPress={async () => {
+              await AsyncStorage.setItem("onboarding_done", "true");
+              onDone();
+            }}
+            style={ob.skip}
+          >
+            <Text style={ob.skipTxt}>SKIP</Text>
           </TouchableOpacity>
         )}
-      </Animated.View>
+      </View>
     </SafeAreaView>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-const s = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#050507",
+const ob = StyleSheet.create({
+  root: { flex: 1 },
+  accentBlock: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 24,
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingBottom: 20,
+    justifyContent: "center",
+    paddingVertical: 20,
+    overflow: "hidden",
   },
-  bgGlow: {
-    position: "absolute",
-    width: 340,
-    height: 340,
-    borderRadius: 170,
-    top: height * 0.15,
-    alignSelf: "center",
-  },
-  dots: { flexDirection: "row", gap: 6, marginTop: 16, alignSelf: "center" },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "rgba(255,255,255,0.15)",
-  },
-  plantWrap: { alignItems: "center", marginTop: 10 },
-  stagePill: {
-    marginTop: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  stageTxt: { fontSize: 10, fontWeight: "800", letterSpacing: 2 },
-  textWrap: { alignItems: "center", paddingHorizontal: 32, gap: 10 },
+  plantWrap: { alignItems: "center" },
+  content: { paddingHorizontal: 28, paddingTop: 32, flex: 1 },
   title: {
-    fontSize: 32,
-    fontWeight: "900",
-    textAlign: "center",
-    lineHeight: 38,
+    fontSize: 36,
     fontFamily: "Orbitron",
+    color: WHITE,
+    letterSpacing: 1,
+    lineHeight: 42,
+    marginBottom: 14,
   },
   sub: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.5)",
-    textAlign: "center",
-    lineHeight: 22,
+    fontSize: 15,
+    color: "rgba(255,255,255,0.55)",
+    lineHeight: 24,
+    fontWeight: "400",
   },
-  tipPill: {
-    marginTop: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
+  dots: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 20,
   },
-  tipTxt: { fontSize: 12, fontWeight: "700" },
-  btnWrap: {
-    width: "100%",
-    paddingHorizontal: 28,
-    alignItems: "center",
-    gap: 12,
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(255,255,255,0.2)",
   },
-  btn: {
-    width: "100%",
-    borderRadius: 18,
-    paddingVertical: 18,
-    alignItems: "center",
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
+  dotActive: { width: 24, borderRadius: 4 },
+  footer: { paddingHorizontal: 24, paddingBottom: 32, gap: 12 },
+  btn: { borderRadius: 18, paddingVertical: 18, alignItems: "center" },
+  btnTxt: { fontSize: 15, fontWeight: "900", letterSpacing: 2 },
+  skip: { alignItems: "center", paddingVertical: 6 },
+  skipTxt: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.3)",
+    fontWeight: "700",
+    letterSpacing: 2,
   },
-  btnTxt: { color: "#000", fontWeight: "900", fontSize: 15, letterSpacing: 1 },
-  skipBtn: { paddingVertical: 6 },
-  skipTxt: { fontSize: 12, color: "rgba(255,255,255,0.25)", fontWeight: "500" },
 });
