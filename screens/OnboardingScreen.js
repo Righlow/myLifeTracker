@@ -1,3 +1,25 @@
+/**
+ * screens/OnboardingScreen.js — 1Life Hub | Onboarding Flow
+ *
+ * PURPOSE:
+ * First-time user experience. Introduces the app's three pillars
+ * (Physical, Routine, Habits) across 4 animated slides, showing a
+ * progressively growing bonsai plant to preview the core mechanic.
+ *
+ * KEY FEATURES:
+ *  - 4 slides: Welcome → Physical Health → Routine → Grow
+ *  - Each slide has an accent colour matching its domain screen
+ *  - Mini bonsai plant grows visually across slides (0 → 150 → 300 → 500 XP)
+ *  - Tappable dot indicators for non-linear navigation
+ *  - "Skip Intro" option for returning users or testers
+ *  - On completion, sets AsyncStorage "onboarding_done" = "true"
+ *    so it never shows again (unless FORCE_ONBOARDING = true in App.js)
+ *
+ * DESIGN DECISION:
+ * Showing the bonsai growing during onboarding immediately communicates
+ * the core feedback loop: do things → plant grows → feel progress.
+ * This sets expectations before the user has logged anything.
+ */
 // screens/OnboardingScreen.js — 1Life Hub
 import React, { useRef, useState } from "react";
 import {
@@ -25,7 +47,8 @@ const WHITE = "#FFFFFF";
 const MUTED = "rgba(255,255,255,0.55)";
 const DIM = "rgba(255,255,255,0.80)";
 
-// ── SLIDES ────────────────────────────────────────────────────
+// Slide definitions — each slide has an icon, accent colour, title, sub-text, and step cards
+//  SLIDES
 const SLIDES = [
   {
     id: 0,
@@ -113,6 +136,7 @@ const SLIDES = [
   },
 ];
 
+// MiniPlant — scaled-down SVG version of the bonsai, grows across onboarding slides
 // ── MINI PLANT ────────────────────────────────────────────────
 function MiniPlant({ xp }) {
   const W = 100;
@@ -242,7 +266,8 @@ function MiniPlant({ xp }) {
   );
 }
 
-// ── MAIN ─────────────────────────────────────────────────────
+// OnboardingScreen — main exported component with fade animation between slides
+//  MAIN
 export default function OnboardingScreen({ onDone }) {
   const [idx, setIdx] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
@@ -282,7 +307,7 @@ export default function OnboardingScreen({ onDone }) {
 
   return (
     <SafeAreaView style={ob.root} edges={["top", "bottom"]}>
-      {/* ── HEADER ICON + PLANT ── */}
+      {/* HEADER ICON + PLANT  */}
       <Animated.View style={[ob.topBlock, { opacity: fade }]}>
         <View
           style={[
@@ -386,7 +411,9 @@ export default function OnboardingScreen({ onDone }) {
           onPress={handleNext}
           activeOpacity={0.85}
         >
-          <Text style={ob.btnTxt}>{isLast ? "GET STARTED" : "NEXT"}</Text>
+          <Text style={[ob.btnTxt, { color: WHITE }]}>
+            {isLast ? "GET STARTED" : "NEXT"}
+          </Text>
           <Ionicons
             name={isLast ? "checkmark-outline" : "arrow-forward-outline"}
             size={18}
@@ -404,7 +431,7 @@ export default function OnboardingScreen({ onDone }) {
   );
 }
 
-// ── STYLES ────────────────────────────────────────────────────
+//  STYLES
 const ob = StyleSheet.create({
   root: {
     flex: 1,

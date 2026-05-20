@@ -1,3 +1,36 @@
+/**
+ * screens/Physical.js — 1Life Hub | Physical Health Screen
+ *
+ * PURPOSE:
+ * Allows users to log and track three core physical health metrics daily:
+ * sleep (hours), water intake (glasses), and movement (active minutes).
+ * Each metric has a defined daily goal and contributes equally to the
+ * Physical score shown on the Today dashboard.
+ *
+ * KEY FEATURES:
+ *  - Three tabs: Sleep / Diet / Gym — each with dedicated stat card
+ *  - Stat cards show current value, goal, progress bar, and contextual tip
+ *  - Log Modal: slider + quick-select buttons for fast data entry
+ *  - Sleep quality tags (Poor/Fair/Good/Great) and meal logging for Diet tab
+ *  - Workout type selector for Gym tab
+ *  - 7-Day History strip: bar chart showing the past week at a glance
+ *  - Score pill in header updates in real-time as data is logged
+ *
+ * DATA FLOW:
+ *  Reads/writes via healthStore (store.js) → AsyncStorage key "1life_health"
+ *  One entry per calendar day; saves the entire day's data in one object.
+ *
+ * DESIGN DECISION:
+ * RED was chosen as the identity colour for Physical because it conveys
+ * energy, urgency, and the body. The tab-based layout keeps each metric
+ * focused without overwhelming the user with all three at once.
+ *
+ * SCORING:
+ *  sleepScore  = min(sleep / 8,  1)   → 8 hours = 100%
+ *  waterScore  = min(water / 8,  1)   → 8 glasses = 100%
+ *  moveScore   = min(movement / 60, 1) → 60 minutes = 100%
+ *  overall     = average of the three × 100
+ */
 // screens/Physical.js — 1Life Hub | RED identity screen
 import React, { useState, useEffect, useCallback } from "react";
 import {
@@ -18,10 +51,10 @@ import Slider from "@react-native-community/slider";
 import { healthStore } from "../store";
 
 const BG = "#0A0E27"; // dark navy — page background
-const RED = "#CC0000"; // Physical screen / alerts
-const BLUE = "#0047AB"; // Routine / pulse card
-const GREEN = "#00C060"; // Today header / XP / goals
-const ORANGE = "#FF4B0A"; // deadlines / warnings
+const RED = "#CC0000"; // Physical screen - alerts
+const BLUE = "#0047AB"; // Routine - pulse card
+const GREEN = "#00C060"; // Today - header / XP / goals
+const ORANGE = "#FF4B0A"; // deadlines - warnings
 const WHITE = "#FFFFFF"; // ALL text and icons on dark surfaces
 const MUTED = "rgba(255,255,255,0.55)";
 const DIM = "rgba(255,255,255,0.80)";
@@ -68,7 +101,8 @@ const METRIC_CONFIG = {
   },
 };
 
-// ── LOG MODAL ─────────────────────────────────────────────────
+// LogModal — bottom sheet with slider and quick buttons to log a metric value
+//  LOG MODAL
 function LogModal({
   visible,
   metric,
@@ -280,7 +314,8 @@ function LogModal({
   );
 }
 
-// ── STAT CARD ─────────────────────────────────────────────────
+// StatCard — displays current value vs goal with progress bar and contextual tip text
+// ── STAT CARD
 function StatCard({ metricKey, value }) {
   const cfg = METRIC_CONFIG[metricKey];
   const pct = Math.min((value / cfg.goal) * 100, 100);
@@ -351,7 +386,8 @@ function StatCard({ metricKey, value }) {
   );
 }
 
-// ── TAB CONTENT ───────────────────────────────────────────────
+// Tab content components — one per metric, rendered based on activeTab state
+//TAB CONTENT
 function SleepTab({ sleep }) {
   return (
     <View style={p.tabContent}>
@@ -406,7 +442,8 @@ function GymTab({ movement }) {
   );
 }
 
-// ── 7-DAY HISTORY ─────────────────────────────────────────────
+// HistoryStrip — bar chart of the past 7 days showing sleep/water/movement
+//  7-DAY HISTORY
 function HistoryStrip({ entries }) {
   const today = new Date();
   const LABELS = ["M", "T", "W", "T", "F", "S", "S"];
@@ -470,7 +507,8 @@ function HistoryStrip({ entries }) {
   );
 }
 
-// ── MAIN SCREEN ───────────────────────────────────────────────
+// PhysicalScreen — main exported component
+// MAIN SCREEN component
 export default function PhysicalScreen({ navigation, route }) {
   const defaultTab = route?.params?.defaultTab || "sleep";
   const [activeTab, setActiveTab] = useState(defaultTab);
@@ -713,7 +751,7 @@ const p = StyleSheet.create({
   },
   sub: {
     fontSize: 10,
-    color: "rgba(255,255,255,0.70)",
+    color: "rgba(255,255,255,0.75)",
     fontWeight: "500",
     marginTop: 2,
   },
@@ -994,7 +1032,7 @@ const lg = StyleSheet.create({
   },
   bigNum: { fontSize: 58, fontWeight: "900", lineHeight: 66 },
   bigUnit: { fontSize: 16, color: MUTED, fontWeight: "600" },
-  slash: { fontSize: 20, color: "rgba(0,0,0,0.35)", marginHorizontal: 4 },
+  slash: { fontSize: 20, color: "rgba(255,255,255,0.35)", marginHorizontal: 4 },
   goalNum: { fontSize: 20, color: "rgba(255,255,255,0.55)", fontWeight: "700" },
   progressTrack: {
     height: 5,

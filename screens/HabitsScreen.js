@@ -1,3 +1,33 @@
+/**
+ * screens/HabitsScreen.js — 1Life Hub | Habits Screen
+ *
+ * PURPOSE:
+ * Enables users to build and track long-term daily habits. Each habit
+ * can be assigned to an area of life (Physical, Mental, Emotional, Personal)
+ * and a frequency (Daily or Weekly). Completing habits earns XP, which
+ * feeds the bonsai plant on the Today screen and raises the Habits pulse score.
+ *
+ * KEY FEATURES:
+ *  - Habit list split into "To Do Today" and "Done" sections
+ *  - Tap a habit card to toggle it complete/incomplete
+ *  - Streak counter per habit — shows consecutive days completed
+ *  - Add Habit Modal: name, area of life (colour-coded), frequency selector
+ *  - Long-press to delete a habit with confirmation alert
+ *  - Summary card at the bottom: Done / Remaining / % Complete
+ *  - Empty state with call-to-action when no habits exist yet
+ *  - Pull-to-refresh reloads latest data from storage
+ *
+ * DATA FLOW:
+ *  Habits list: habitsStore → AsyncStorage "1life_habits"
+ *  Completions: entriesStore → AsyncStorage "1life_entries" (one entry per day)
+ *  Each entry stores an array of { habit_id, completed } objects
+ *  Streak is calculated by walking backwards through entries day by day
+ *
+ * DESIGN DECISION:
+ * GREEN was chosen for Habits to represent growth and consistency — the same
+ * colour as the bonsai tree and XP system, reinforcing the connection between
+ * daily habit completion and visible plant growth.
+ */
 // screens/HabitsScreen.js — 1Life Hub | GREEN identity screen
 import React, { useState, useEffect, useCallback } from "react";
 import {
@@ -44,7 +74,8 @@ const FREQUENCIES = [
   { key: "weekly", label: "Weekly" },
 ];
 
-// ── ADD HABIT MODAL ───────────────────────────────────────────
+// AddHabitModal — bottom sheet for creating a new habit with domain and frequency
+//  ADD HABIT MODAL
 function AddHabitModal({ visible, onClose, onSave }) {
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("personal");
@@ -185,7 +216,8 @@ function AddHabitModal({ visible, onClose, onSave }) {
   );
 }
 
-// ── HABIT CARD ────────────────────────────────────────────────
+// HabitCard — individual habit row with checkbox, domain pill, and streak badge
+//  HABIT CARD
 function HabitCard({ habit, done, streak, onToggle, onDelete }) {
   const dom = DOMAINS.find((d) => d.key === habit.domain) || DOMAINS[3];
   return (
@@ -235,6 +267,7 @@ function HabitCard({ habit, done, streak, onToggle, onDelete }) {
   );
 }
 
+// HabitsScreen — main exported component
 // ── MAIN SCREEN ───────────────────────────────────────────────
 export default function HabitsScreen({ navigation }) {
   const [habits, setHabits] = useState([]);
@@ -380,7 +413,7 @@ export default function HabitsScreen({ navigation }) {
         </View>
       </View>
 
-      {/* ── PROGRESS BAR ── */}
+      {/* PROGRESS BAR  */}
       <View style={s.progressRow}>
         <View style={s.progressTrack}>
           <View

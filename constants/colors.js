@@ -17,17 +17,17 @@ const COLORS = {
   neonRed: "#CC0000",
   neonPurple: "#0047AB",
 
-  // ── Text ─────────────────────────────────────────────────────
+  // Text
   text: "#FFFFFF",
   textDim: "rgba(255,255,255,0.80)",
   textMuted: "rgba(255,255,255,0.55)",
 
-  // ── Surfaces ─────────────────────────────────────────────────
+  //  Surfaces
   bgSoft: "#12183A",
   bgCard: "rgba(255,255,255,0.06)",
   border: "rgba(255,255,255,0.10)",
 
-  // ── Domain colours ───────────────────────────────────────────
+  //  Domain colours
   domains: {
     physical: "#CC0000",
     mental: "#0047AB",

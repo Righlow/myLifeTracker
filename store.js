@@ -1,3 +1,30 @@
+/**
+ * store.js — 1Life Hub | Centralised Data Layer
+ *
+ * PURPOSE:
+ * Single source of truth for all data persistence in the app.
+ * No screen reads AsyncStorage directly — everything goes through
+ * these store objects, keeping data logic separate from UI logic.
+ *
+ * PATTERN:
+ *  - readList / writeList: private helpers that read/write JSON arrays
+ *  - Each store exposes a clean public API (list, create, update, remove)
+ *  - uid(): generates unique IDs using timestamp + random suffix
+ *  - todayStr(): returns today's date as "YYYY-MM-DD" for health entries
+ *
+ * STORES:
+ *  habitsStore  → "1life_habits"  — habit definitions (name, domain, frequency)
+ *  entriesStore → "1life_entries" — daily habit completion logs + domain XP
+ *  goalsStore   → "1life_goals"   — weekly goals with progress tracking
+ *  healthStore  → "1life_health"  — daily health metrics (sleep, water, movement)
+ *  routineStore → "routine_items" — meetings, deadlines, tasks (ephemeral daily)
+ *  todayTasksStore → "today_tasks" — quick tasks on the Today screen
+ *
+ * DESIGN DECISION:
+ * AsyncStorage was chosen over SQLite or a remote database because the app
+ * is fully offline-first with no user accounts. All data stays on-device,
+ * which means no privacy concerns and no network dependency.
+ */
 // Centralised data layer using AsynchStorage
 // Provides simple Create Read Update Delete operations for habits, entries, goals, and health data
 //all screens import from her, no screen reads async storage directly
@@ -39,7 +66,7 @@ async function writeList(key, list) {
   }
 }
 
-// ── Habits store ──────────────────────────────────────────────
+// Habits store
 export const habitsStore = {
   list: () => readList(KEYS.HABITS),
   create: async (data) => {
@@ -64,7 +91,7 @@ export const habitsStore = {
   },
 };
 
-// ── Entries store ─────────────────────────────────────────────
+//  Entries store
 export const entriesStore = {
   list: () => readList(KEYS.ENTRIES),
   create: async (data) => {
@@ -94,7 +121,7 @@ export const entriesStore = {
   },
 };
 
-// ── Goals store ───────────────────────────────────────────────
+//  Goals store
 export const goalsStore = {
   list: () => readList(KEYS.GOALS),
   create: async (data) => {
@@ -129,7 +156,7 @@ export const goalsStore = {
   },
 };
 
-// ── Health store ──────────────────────────────────────────────
+// Health store
 // One entry per day, date-stamped. Data never resets mid-day.
 export const healthStore = {
   list: () => readList(KEYS.HEALTH),
@@ -218,7 +245,7 @@ export const routineStore = {
   },
 };
 
-// ── Today quick-tasks store ───────────────────────────────────
+//  Today quick-tasks store
 // Plain list. Cleared only when user pulls to refresh.
 const TODAY_TASKS_KEY = "today_tasks";
 

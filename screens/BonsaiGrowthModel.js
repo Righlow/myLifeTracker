@@ -1,4 +1,39 @@
-// ─────────────────────────────────────────────────────────────
+/**
+ * screens/BonsaiGrowthModel.js — 1Life Hub | Bonsai Growth Visualisation
+ *
+ * PURPOSE:
+ * The emotional core of the app. An SVG-based bonsai tree that grows through
+ * 5 stages based on the user's cumulative XP earned from habits, health goals,
+ * and routine completion. The plant provides a living, visual metaphor for
+ * personal growth — the more consistent the user, the bigger the tree.
+ *
+ * GROWTH STAGES (based on XP thresholds):
+ *  0    XP → Seed     (tiny sprout, no branches)
+ *  100  XP → Seedling (small trunk, first leaves)
+ *  300  XP → Sapling  (branches visible, fuller canopy)
+ *  600  XP → Young    (wide canopy, bark detail)
+ *  1000 XP → Mature   (full bonsai with glowing aura)
+ *
+ * KEY FEATURES:
+ *  - Fully procedural SVG — no image assets, scales to any size
+ *  - Animated radial pulse/glow effect on the canopy
+ *  - Circular XP progress ring with percentage label
+ *  - Stage label pill (SEED / SEEDLING / SAPLING / YOUNG / MATURE)
+ *  - XP progress bar showing progress to next stage
+ *  - Smooth transitions between stages as XP accumulates
+ *
+ * DESIGN DECISION:
+ * A bonsai was chosen specifically because it requires patience and daily care —
+ * a direct metaphor for habit building. The procedural SVG approach (rather than
+ * static images) means the tree looks different at every XP level, rewarding
+ * users for each incremental improvement rather than only at stage thresholds.
+ *
+ * XP SOURCES (calculated in Today.js):
+ *  - Health score × 200 (max 200 XP/day)
+ *  - Habit score × 200 (max 200 XP/day)
+ *  - Routine score × 100 (max 100 XP/day)
+ *  Total possible: 500 XP/day
+ */
 // screens/BonsaiGrowthModel.js  —  1Life Hub
 // ─────────────────────────────────────────────────────────────
 import React, { useEffect, useRef } from "react";
@@ -531,7 +566,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
   },
   stageTxt: { fontSize: 10, fontWeight: "800", letterSpacing: 2 },
-  xpTxt: { fontSize: 10, color: "#44445a", fontWeight: "600" },
+  xpTxt: { fontSize: 10, color: "rgba(255,255,255,0.55)", fontWeight: "600" },
 
   xpBarWrap: { width: "88%", position: "relative", marginBottom: 6 },
   xpBarTrack: {

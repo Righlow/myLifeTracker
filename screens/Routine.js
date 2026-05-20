@@ -1,3 +1,34 @@
+/**
+ * screens/Routine.js — 1Life Hub | Routine Screen
+ *
+ * PURPOSE:
+ * Helps users manage their daily structured commitments across three
+ * categories: Meetings (scheduled events), Deadlines (time-bound tasks),
+ * and Tasks (general to-dos with priority levels). Completion of items
+ * contributes to the Routine score on the Today dashboard.
+ 
+ * KEY FEATURES:
+
+ *  - Three-tab layout: Meeting / Deadline / Task
+ *  - Each tab shows pending items with a coloured left border accent
+ *  - Task tab includes a progress card (X of Y done, %) and priority labels
+ *  - Add Modal: context-aware form — shows date field for meetings/deadlines,
+ *    priority selector (Low/Med/High) for tasks
+ *  - Overview strip at the bottom: combined completion across all three types
+ *  - Pull-to-refresh resets all "done" flags to start the day fresh
+ *  - Badge counts on tabs show number of pending items
+ 
+ * DATA FLOW:
+ *  Uses local AsyncStorage key "routine_items" directly (not via store.js)
+ *  because routine items are ephemeral daily data, not long-term records.
+ 
+ * DESIGN NOTES:
+ * BLUE was chosen for Routine to convey structure, reliability, and planning.
+ *
+ * Pull-to-refresh as the reset mechanism was intentional — it requires a
+ * deliberate action to start a new day, rather than auto-resetting at midnight,
+ * giving the user control over when their slate is wiped clean.
+ */
 // screens/Routine.js — 1Life Hub | BLUE identity screen
 import React, { useState, useRef, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -37,7 +68,8 @@ const PRIORITIES = [
   { key: "high", label: "HIGH", color: RED },
 ];
 
-// ── STORAGE ───────────────────────────────────────────────────
+// Local AsyncStorage helpers — routine data stored as a single JSON object
+// ──STORAGE
 const ROUTINE_KEY = "routine_items";
 const _get = async () => {
   try {
@@ -72,7 +104,9 @@ const _reset = async () => {
   }
 };
 
-// ── ADD MODAL ─────────────────────────────────────────────────
+// AddModal — bottom sheet for creating new meetings, deadlines, or tasks
+//  ADD MODAL
+
 function AddModal({ visible, defaultType, onSave, onClose }) {
   const [type, setType] = useState(defaultType || "task");
   const [title, setTitle] = useState("");
@@ -240,7 +274,8 @@ function AddModal({ visible, defaultType, onSave, onClose }) {
   );
 }
 
-// ── ITEM CARD ─────────────────────────────────────────────────
+// ItemCard — a single routine item with checkbox, title, meta info, and delete
+// ITEM CARD
 function ItemCard({ item, type, onToggle, onDelete }) {
   const tab = TABS.find((t) => t.key === type);
   const col = tab?.color || GREEN;
@@ -277,6 +312,7 @@ function ItemCard({ item, type, onToggle, onDelete }) {
   );
 }
 
+// EmptyState — shown when a tab has no items yet
 // ── EMPTY STATE ───────────────────────────────────────────────
 function EmptyState({ type }) {
   const tab = TABS.find((t) => t.key === type);
@@ -296,6 +332,7 @@ function EmptyState({ type }) {
   );
 }
 
+// TaskTab — specialised tab with completion progress card above the task list
 // ── TASK TAB ──────────────────────────────────────────────────
 function TaskTab({ items, onToggle, onDelete }) {
   const done = items.filter((i) => i.done).length;
@@ -352,7 +389,8 @@ function TaskTab({ items, onToggle, onDelete }) {
   );
 }
 
-// ── OVERVIEW STRIP ────────────────────────────────────────────
+// OverviewStrip — summary card at the bottom showing combined completion across all types
+// OVERVIEW STRIP
 function OverviewStrip({ meetings, deadlines, tasks }) {
   const rows = [
     { tab: TABS[0], items: meetings },
@@ -397,6 +435,7 @@ function OverviewStrip({ meetings, deadlines, tasks }) {
   );
 }
 
+// RoutineScreen — main exported component
 // ── MAIN SCREEN ───────────────────────────────────────────────
 export default function RoutineScreen({ navigation, route }) {
   const defaultTab = route?.params?.defaultTab;
@@ -653,7 +692,7 @@ const r = StyleSheet.create({
   },
   sub: {
     fontSize: 10,
-    color: "rgba(255,255,255,0.5)",
+    color: "rgba(255,255,255,0.70)",
     fontWeight: "500",
     marginTop: 2,
   },

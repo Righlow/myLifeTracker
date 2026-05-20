@@ -1,4 +1,28 @@
-// screens/DeadlinesScreen.js — 1Life Hub
+/**
+ * screens/DeadlinesScreen.js — 1Life Hub | Deadlines Screen
+ *
+ * PURPOSE:
+ * A focused deadline tracker. Users can add time-bound items with a title,
+ * optional description, and a due date/time. Cards display a live countdown
+ * and colour-code by urgency: green (>3 days), orange (1–3 days), red (<24h or overdue).
+ *
+ * KEY FEATURES:
+ *  - Countdown timer per deadline (e.g. "2d 4h left", "OVERDUE")
+ *  - Urgency colour coding on card accent bar and countdown pill
+ *  - Tap card to mark complete; long press to delete
+ *  - Completed items shown below active ones at reduced opacity
+ *  - Add Modal: title, description, date (DD/MM/YYYY), time (HH:MM)
+ *
+ * DATA FLOW:
+ *  Stored in AsyncStorage under key "deadlines_data" as a JSON array.
+ *  Sorted by datetime on every load/save so nearest deadline is always first.
+ *
+ * DESIGN DECISION:
+ * ORANGE was chosen to convey urgency and time-sensitivity. This screen is
+ * intentionally standalone (not part of Routine) so users can navigate
+ * directly to it from the Routine FAB overlay for focused deadline management.
+ */
+// screens/DeadlinesScreen.js — 1Life Hub | ORANGE identity screen
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
@@ -9,27 +33,33 @@ import {
   Modal,
   TextInput,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { COLORS } from "../constants/colors";
 
-const RED = COLORS.neonRed;
-const GREEN = COLORS.neonGreen;
-const MUTED = COLORS.textMuted;
+const BG = "#0A0E27";
+const RED = "#CC0000";
+const BLUE = "#0047AB";
+const GREEN = "#00C060";
+const ORANGE = "#FF4B0A";
+const WHITE = "#FFFFFF";
+const MUTED = "rgba(255,255,255,0.55)";
+const DIM = "rgba(255,255,255,0.80)";
+
 const DEADLINES_KEY = "deadlines_data";
 
 function timeUntil(dateStr) {
   if (!dateStr) return null;
-  const now = new Date();
-  const then = new Date(dateStr);
-  const diff = then - now;
+  const diff = new Date(dateStr) - new Date();
   if (diff < 0) return "OVERDUE";
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
   if (days > 0) return `${days}d ${hours}h left`;
-  if (hours > 0) return `${hours}h left`;
-  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  if (hours > 0) return `${hours}h ${mins}m left`;
   return `${mins}m left`;
 }
 
@@ -37,38 +67,9 @@ function urgencyColor(dateStr) {
   if (!dateStr) return MUTED;
   const diff = new Date(dateStr) - new Date();
   if (diff < 0) return RED;
-  if (diff < 1000 * 60 * 60 * 24) return RED;
-  if (diff < 1000 * 60 * 60 * 24 * 3) return COLORS.neonAmber || "#fbbf24";
+  if (diff < 86400000) return RED;
+  if (diff < 86400000 * 3) return ORANGE;
   return GREEN;
-}
-
-function DateTimePicker({ date, time, onDateChange, onTimeChange }) {
-  return (
-    <View style={d.dtRow}>
-      <View style={d.dtField}>
-        <Text style={d.dtLabel}>DATE</Text>
-        <TextInput
-          style={d.dtInput}
-          value={date}
-          onChangeText={onDateChange}
-          placeholder="DD/MM/YYYY"
-          placeholderTextColor="#44445a"
-          keyboardType="numbers-and-punctuation"
-        />
-      </View>
-      <View style={d.dtField}>
-        <Text style={d.dtLabel}>TIME</Text>
-        <TextInput
-          style={d.dtInput}
-          value={time}
-          onChangeText={onTimeChange}
-          placeholder="HH:MM"
-          placeholderTextColor="#44445a"
-          keyboardType="numbers-and-punctuation"
-        />
-      </View>
-    </View>
-  );
 }
 
 export default function DeadlinesScreen({ navigation }) {
@@ -95,11 +96,11 @@ export default function DeadlinesScreen({ navigation }) {
     load();
   }, [load]);
   useEffect(() => {
-    const unsub = navigation.addListener("focus", load);
-    return unsub;
+    const u = navigation.addListener("focus", load);
+    return u;
   }, [navigation, load]);
 
-  const save = async (updated) => {
+  const persist = async (updated) => {
     await AsyncStorage.setItem(DEADLINES_KEY, JSON.stringify(updated));
     setDeadlines(
       updated.sort((a, b) => new Date(a.datetime) - new Date(b.datetime)),
@@ -112,7 +113,7 @@ export default function DeadlinesScreen({ navigation }) {
     const datetime = `${year}-${month}-${day}T${time || "23:59"}`;
     const raw = await AsyncStorage.getItem(DEADLINES_KEY);
     const all = raw ? JSON.parse(raw) : [];
-    await save([
+    await persist([
       ...all,
       {
         id: Date.now().toString(),
@@ -129,8 +130,8 @@ export default function DeadlinesScreen({ navigation }) {
     setModal(false);
   };
 
-  const deleteDeadline = (id, title) => {
-    Alert.alert("Delete deadline", `Delete "${title}"?`, [
+  const deleteDeadline = (id, name) => {
+    Alert.alert("Delete Deadline", `Delete "${name}"?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
@@ -138,7 +139,7 @@ export default function DeadlinesScreen({ navigation }) {
         onPress: async () => {
           const raw = await AsyncStorage.getItem(DEADLINES_KEY);
           const all = raw ? JSON.parse(raw) : [];
-          await save(all.filter((dl) => dl.id !== id));
+          await persist(all.filter((dl) => dl.id !== id));
         },
       },
     ]);
@@ -147,7 +148,7 @@ export default function DeadlinesScreen({ navigation }) {
   const toggleDone = async (id) => {
     const raw = await AsyncStorage.getItem(DEADLINES_KEY);
     const all = raw ? JSON.parse(raw) : [];
-    await save(
+    await persist(
       all.map((dl) => (dl.id === id ? { ...dl, done: !dl.done } : dl)),
     );
   };
@@ -156,63 +157,74 @@ export default function DeadlinesScreen({ navigation }) {
   const completed = deadlines.filter((d) => d.done);
 
   return (
-    <SafeAreaView style={d.root} edges={["top"]}>
-      {/* Header */}
-      <View style={d.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={d.backBtn}>
-          <Text style={d.backArrow}>←</Text>
+    <SafeAreaView style={s.root} edges={["top"]}>
+      {/* ── ORANGE HEADER ── */}
+      <View style={s.headerBlock}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={WHITE} />
         </TouchableOpacity>
-        <Text style={d.title}>DEADLINES</Text>
-        <TouchableOpacity style={d.addBtn} onPress={() => setModal(true)}>
-          <Text style={d.addBtnTxt}>+ ADD</Text>
+        <View style={{ flex: 1, marginLeft: 10 }}>
+          <Text style={s.title}>DEADLINES</Text>
+          <Text style={s.sub}>
+            {active.length} active · tap card to complete
+          </Text>
+        </View>
+        <TouchableOpacity style={s.addBtn} onPress={() => setModal(true)}>
+          <Ionicons name="add" size={20} color={WHITE} />
         </TouchableOpacity>
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 60 }}
+        contentContainerStyle={{ paddingBottom: 60, paddingHorizontal: 14 }}
         showsVerticalScrollIndicator={false}
       >
         {active.length === 0 ? (
-          <View style={d.emptyCard}>
-            <Text style={d.emptyTitle}>No active deadlines</Text>
-            <Text style={d.emptyDesc}>Tap + ADD to track one</Text>
+          <View style={s.emptyCard}>
+            <View style={s.emptyIcon}>
+              <Ionicons name="alarm-outline" size={28} color={ORANGE} />
+            </View>
+            <Text style={s.emptyTitle}>No active deadlines</Text>
+            <Text style={s.emptySub}>Tap + to add one</Text>
           </View>
         ) : (
           <>
-            <Text style={d.secLabel}>ACTIVE</Text>
+            <Text style={s.sectionLabel}>ACTIVE</Text>
             {active.map((dl) => {
               const until = timeUntil(dl.datetime);
-              const color = urgencyColor(dl.datetime);
-              const isOverdue = until === "OVERDUE";
+              const col = urgencyColor(dl.datetime);
               return (
                 <TouchableOpacity
                   key={dl.id}
-                  style={d.card}
+                  style={s.card}
                   onPress={() => toggleDone(dl.id)}
                   onLongPress={() => deleteDeadline(dl.id, dl.title)}
                   activeOpacity={0.8}
                 >
-                  <View style={[d.cardAccent, { backgroundColor: color }]} />
-                  <View style={d.cardBody}>
-                    <View style={d.cardHeader}>
-                      <Text style={d.cardTitle}>{dl.title}</Text>
-                      <View
-                        style={[
-                          d.countdownPill,
-                          {
-                            borderColor: `${color}40`,
-                            backgroundColor: `${color}12`,
-                          },
-                        ]}
-                      >
-                        <Text style={[d.countdownTxt, { color }]}>{until}</Text>
-                      </View>
+                  <View style={[s.cardAccent, { backgroundColor: col }]} />
+                  <View style={s.cardBody}>
+                    <View style={s.cardHeader}>
+                      <Text style={s.cardTitle}>{dl.title}</Text>
+                      {until && (
+                        <View
+                          style={[
+                            s.pill,
+                            {
+                              borderColor: `${col}50`,
+                              backgroundColor: `${col}15`,
+                            },
+                          ]}
+                        >
+                          <Text style={[s.pillTxt, { color: col }]}>
+                            {until}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                     {dl.description ? (
-                      <Text style={d.cardDesc}>{dl.description}</Text>
+                      <Text style={s.cardDesc}>{dl.description}</Text>
                     ) : null}
                     {dl.datetime ? (
-                      <Text style={[d.cardDate, isOverdue && { color: RED }]}>
+                      <Text style={s.cardDate}>
                         Due:{" "}
                         {new Date(dl.datetime).toLocaleDateString("en-GB", {
                           weekday: "short",
@@ -226,10 +238,10 @@ export default function DeadlinesScreen({ navigation }) {
                         })}
                       </Text>
                     ) : null}
+                    <Text style={s.hint}>
+                      Tap to complete · Long press to delete
+                    </Text>
                   </View>
-                  <Text style={d.hint}>
-                    Tap to complete · Long press to delete
-                  </Text>
                 </TouchableOpacity>
               );
             })}
@@ -238,19 +250,18 @@ export default function DeadlinesScreen({ navigation }) {
 
         {completed.length > 0 && (
           <>
-            <Text style={d.secLabel}>COMPLETED</Text>
+            <Text style={[s.sectionLabel, { marginTop: 16 }]}>COMPLETED ✓</Text>
             {completed.map((dl) => (
               <TouchableOpacity
                 key={dl.id}
-                style={[d.card, { opacity: 0.4 }]}
+                style={[s.card, { opacity: 0.4 }]}
                 onPress={() => toggleDone(dl.id)}
                 onLongPress={() => deleteDeadline(dl.id, dl.title)}
-                activeOpacity={0.8}
               >
-                <View style={d.cardBody}>
+                <View style={s.cardBody}>
                   <Text
                     style={[
-                      d.cardTitle,
+                      s.cardTitle,
                       { textDecorationLine: "line-through" },
                     ]}
                   >
@@ -263,100 +274,159 @@ export default function DeadlinesScreen({ navigation }) {
         )}
       </ScrollView>
 
-      {/* Add Modal */}
-      <Modal visible={modal} animationType="slide" transparent>
-        <View style={d.overlay}>
-          <View style={d.sheet}>
-            <View style={d.handle} />
-            <Text style={d.modalTitle}>NEW DEADLINE</Text>
+      {/* ── ADD MODAL ── */}
+      <Modal
+        visible={modal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={m.overlay}
+        >
+          <TouchableOpacity
+            style={m.backdrop}
+            activeOpacity={1}
+            onPress={() => setModal(false)}
+          />
+          <View style={m.sheet}>
+            <View style={m.handle} />
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: 6,
+              }}
+            >
+              <Ionicons name="alarm-outline" size={20} color={ORANGE} />
+              <Text style={m.title}>NEW DEADLINE</Text>
+            </View>
 
-            <Text style={d.fieldLabel}>TITLE</Text>
+            <Text style={m.label}>TITLE</Text>
             <TextInput
-              style={d.input}
+              style={m.input}
               value={title}
               onChangeText={setTitle}
               placeholder="What's due?"
-              placeholderTextColor="#44445a"
+              placeholderTextColor={MUTED}
+              color={WHITE}
               autoFocus
             />
 
-            <Text style={d.fieldLabel}>DESCRIPTION (optional)</Text>
+            <Text style={m.label}>DESCRIPTION (optional)</Text>
             <TextInput
-              style={[d.input, { height: 60 }]}
+              style={[m.input, { height: 60 }]}
               value={desc}
               onChangeText={setDesc}
               multiline
               placeholder="Any details..."
-              placeholderTextColor="#44445a"
+              placeholderTextColor={MUTED}
+              color={WHITE}
             />
 
-            <Text style={d.fieldLabel}>DUE DATE & TIME</Text>
-            <DateTimePicker
-              date={date}
-              time={time}
-              onDateChange={setDate}
-              onTimeChange={setTime}
-            />
+            <Text style={m.label}>DUE DATE & TIME</Text>
+            <View style={m.dtRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={m.dtLabel}>DATE (DD/MM/YYYY)</Text>
+                <TextInput
+                  style={m.dtInput}
+                  value={date}
+                  onChangeText={setDate}
+                  placeholder="20/05/2026"
+                  placeholderTextColor={MUTED}
+                  color={WHITE}
+                  keyboardType="numbers-and-punctuation"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={m.dtLabel}>TIME (HH:MM)</Text>
+                <TextInput
+                  style={m.dtInput}
+                  value={time}
+                  onChangeText={setTime}
+                  placeholder="23:59"
+                  placeholderTextColor={MUTED}
+                  color={WHITE}
+                  keyboardType="numbers-and-punctuation"
+                />
+              </View>
+            </View>
 
-            <View style={d.btns}>
+            <View style={m.actions}>
               <TouchableOpacity
-                style={d.cancelBtn}
+                style={m.cancelBtn}
                 onPress={() => setModal(false)}
               >
-                <Text style={d.cancelTxt}>CANCEL</Text>
+                <Text style={m.cancelTxt}>CANCEL</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={d.saveBtn} onPress={create}>
-                <Text style={d.saveTxt}>SAVE</Text>
+              <TouchableOpacity
+                style={[m.saveBtn, !title.trim() && { opacity: 0.4 }]}
+                onPress={create}
+                disabled={!title.trim()}
+              >
+                <Ionicons name="checkmark" size={16} color={WHITE} />
+                <Text style={m.saveTxt}>SAVE</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
 }
 
-const d = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.bg },
-  header: {
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: BG },
+  headerBlock: {
+    backgroundColor: ORANGE,
+    marginHorizontal: 14,
+    marginTop: 14,
+    borderRadius: 20,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 12,
+    padding: 16,
   },
   backBtn: { padding: 4 },
-  backArrow: { fontSize: 24, color: RED, fontWeight: "300" },
-  title: { fontSize: 14, fontFamily: "Orbitron", color: RED, letterSpacing: 2 },
-  addBtn: {
-    backgroundColor: RED,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+  title: {
+    fontSize: 22,
+    fontFamily: "Orbitron",
+    color: WHITE,
+    letterSpacing: 1.5,
+    lineHeight: 24,
   },
-  addBtnTxt: { color: "#000", fontWeight: "900", fontSize: 12 },
-
-  secLabel: {
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 8,
+  sub: {
+    fontSize: 10,
+    color: "rgba(255,255,255,0.70)",
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  addBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.20)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionLabel: {
     fontSize: 9,
     color: MUTED,
-    letterSpacing: 2,
-    fontWeight: "700",
-  },
-
-  card: {
-    marginHorizontal: 14,
+    letterSpacing: 3,
+    fontWeight: "800",
+    marginTop: 20,
     marginBottom: 10,
+  },
+  card: {
     backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 18,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
+    marginBottom: 10,
     overflow: "hidden",
   },
-  cardAccent: { height: 2 },
+  cardAccent: { height: 3 },
   cardBody: { padding: 16 },
   cardHeader: {
     flexDirection: "row",
@@ -367,126 +437,134 @@ const d = StyleSheet.create({
   cardTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: COLORS.text,
+    color: WHITE,
     flex: 1,
     marginRight: 8,
   },
-  cardDesc: { fontSize: 11, color: MUTED, marginBottom: 6 },
+  cardDesc: { fontSize: 12, color: MUTED, marginBottom: 6 },
   cardDate: { fontSize: 11, color: MUTED },
-  hint: {
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    fontSize: 9,
-    color: "rgba(0,0,0,0.10)",
-  },
-
-  countdownPill: {
+  hint: { fontSize: 9, color: "rgba(255,255,255,0.20)", marginTop: 8 },
+  pill: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
     borderWidth: 1,
   },
-  countdownTxt: { fontSize: 10, fontWeight: "800" },
-
+  pillTxt: { fontSize: 10, fontWeight: "800" },
   emptyCard: {
-    margin: 14,
-    padding: 32,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    marginTop: 40,
     alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 20,
+    padding: 32,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: `${ORANGE}20`,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 6,
+    fontSize: 18,
+    fontWeight: "800",
+    color: WHITE,
+    marginBottom: 8,
   },
-  emptyDesc: { fontSize: 12, color: MUTED },
+  emptySub: { fontSize: 13, color: MUTED },
+});
 
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.75)",
-    justifyContent: "flex-end",
+const m = StyleSheet.create({
+  overlay: { flex: 1, justifyContent: "flex-end" },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.75)",
   },
   sheet: {
-    backgroundColor: "#0e0e18",
+    backgroundColor: "#12183A",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 24,
     paddingBottom: 44,
     borderTopWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.10)",
   },
   handle: {
     width: 40,
     height: 4,
-    backgroundColor: "rgba(0,0,0,0.10)",
+    backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: 2,
     alignSelf: "center",
     marginBottom: 20,
   },
-  modalTitle: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: RED,
+  title: {
+    fontSize: 15,
+    fontFamily: "Orbitron",
+    color: ORANGE,
     letterSpacing: 2,
-    marginBottom: 4,
   },
-  fieldLabel: {
+  label: {
     fontSize: 9,
-    color: "#44445a",
-    letterSpacing: 1.5,
+    color: MUTED,
+    letterSpacing: 2,
     fontWeight: "700",
-    marginBottom: 6,
-    marginTop: 14,
+    marginBottom: 8,
+    marginTop: 16,
   },
   input: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 14,
     padding: 14,
-    color: "#e8e8f0",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    fontSize: 14,
+    borderColor: "rgba(255,255,255,0.12)",
+    fontSize: 15,
   },
   dtRow: { flexDirection: "row", gap: 10 },
-  dtField: { flex: 1 },
   dtLabel: {
     fontSize: 9,
-    color: "#44445a",
+    color: MUTED,
     letterSpacing: 1,
     fontWeight: "700",
-    marginBottom: 4,
+    marginBottom: 6,
   },
   dtInput: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(255,255,255,0.08)",
     borderRadius: 12,
     padding: 14,
-    color: "#e8e8f0",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.12)",
     fontSize: 14,
     textAlign: "center",
   },
-  btns: { flexDirection: "row", gap: 10, marginTop: 24 },
+  actions: { flexDirection: "row", gap: 12, marginTop: 24 },
   cancelBtn: {
     flex: 1,
-    borderRadius: 14,
-    padding: 16,
+    paddingVertical: 16,
+    borderRadius: 16,
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.10)",
   },
-  cancelTxt: { color: "#8888a0", fontWeight: "700", fontSize: 13 },
+  cancelTxt: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: MUTED,
+    letterSpacing: 1,
+  },
   saveBtn: {
     flex: 2,
-    borderRadius: 14,
-    padding: 16,
+    paddingVertical: 16,
+    borderRadius: 16,
     alignItems: "center",
-    backgroundColor: RED,
+    justifyContent: "center",
+    backgroundColor: ORANGE,
+    flexDirection: "row",
+    gap: 8,
   },
-  saveTxt: { color: "#fff", fontWeight: "900", fontSize: 13 },
+  saveTxt: { fontSize: 13, fontWeight: "900", color: WHITE, letterSpacing: 1 },
 });

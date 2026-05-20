@@ -1,3 +1,32 @@
+/**
+ * screens/Today.js — 1Life Hub | Main Dashboard
+ *
+ * PURPOSE:
+ * The central hub of the app. Aggregates data from all three life domains
+ 
+ * (Physical, Routine, Habits) into a single "Today's Pulse" score (0–100%).
+ * A living bonsai tree grows visually as the user's overall score increases,
+ * providing an immediate, at-a-glance indicator of daily progress.
+ *
+ * KEY FEATURES:
+ *  - Bonsai Growth Model: SVG tree that changes stage based on total XP earned
+ * 
+ *  - Today's Pulse: weighted score (physical 33%, routine 33%, habits 33%)
+ *  - Notices: auto-generated reminders when health goals are not achieved
+ *  - Quick Tasks: lightweight to-do list that resets on pull-to-refresh
+ *  - FAB buttons: quick-navigate to Physical, Habits, and Routine screens
+ *  - Day streak: counts consecutive days where overall pulse > 0
+ *
+ * DATA FLOW:
+ *  Reads from: healthStore (sleep/water/movement), habitsStore + entriesStore
+ *  (habit completions), routineStore (tasks/meetings/deadlines done count)
+ *  All data persisted via AsyncStorage through the centralised store.js layer
+ *
+ * DESIGN DECISION:
+ * The bonsai metaphor was chosen to give abstract "life progress" a tangible,
+ * emotional representation. Users respond better to a growing plant than a
+ * percentage number alone — it creates a sense of care and responsibility.
+ */
 // screens/Today.js — 1Life Hub
 // Palette: #130101 bg | #00B85C green | #441FFF blue | #E8001C red | #FF4B0A orange | #FFFFFF white
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -22,10 +51,10 @@ import BonsaiGrowthModel from "./BonsaiGrowthModel";
 import { COLORS } from "../constants/colors";
 
 const BG = "#0A0E27"; // dark navy — page background
-const RED = "#CC0000"; // Physical screen / alerts
-const BLUE = "#0047AB"; // Routine / pulse card
-const GREEN = "#00C060"; // Today header / XP / goals
-const ORANGE = "#FF4B0A"; // deadlines / warnings
+const RED = "#CC0000"; // Physical screen - alerts
+const BLUE = "#0047AB"; // Routine - pulse card
+const GREEN = "#00C060"; // Today - header / XP / goals
+const ORANGE = "#FF4B0A"; // deadlines - warnings
 const WHITE = "#FFFFFF"; // ALL text and icons on dark surfaces
 const MUTED = "rgba(255,255,255,0.55)";
 const DIM = "rgba(255,255,255,0.80)";
@@ -43,7 +72,8 @@ const PHYSICAL_ITEMS = [
   { key: "gym", label: "Gym", icon: "barbell-outline" },
 ];
 
-// ── FAB OVERLAY ──────────────────────────────────────────────
+// FAB/FLOATER OVERLAY
+// FabOverlay — expandable menu that appears above a FAB when tapped
 function FabOverlay({
   items,
   anchorX,
@@ -165,6 +195,7 @@ function FabOverlay({
   );
 }
 
+// FabButton — floating action button used for quick navigation at the bottom of the screen
 function FabButton({ icon, label, btnStyle, iconColor, onPress }) {
   return (
     <View style={{ alignItems: "center" }}>
@@ -322,7 +353,7 @@ function QuickAddModal({ visible, onClose, onSave }) {
   );
 }
 
-// ── INLINE STORAGE ────────────────────────────────────────────
+// ── INLINE STORAGE
 const _tasksGet = async () => {
   try {
     const r = await AsyncStorage.getItem("today_tasks");
@@ -345,7 +376,9 @@ const _routineGet = async () => {
   }
 };
 
-// ── TODAY SCREEN ──────────────────────────────────────────────
+// TODAY SCREEN
+
+// TodayScreen — main exported component, gets all data loading and UI sections
 export default function TodayScreen({ navigation }) {
   const [habits, setHabits] = useState([]);
   const [entries, setEntries] = useState([]);
@@ -721,7 +754,7 @@ export default function TodayScreen({ navigation }) {
   );
 }
 
-// ── STYLES ────────────────────────────────────────────────────
+//  STYLES
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: BG },
 

@@ -1,4 +1,28 @@
-// screens/MeetingsScreen.js — 1Life Hub
+/**
+ * screens/MeetingsScreen.js — 1Life Hub | Meetings Screen
+ *
+ * PURPOSE:
+ * A scheduled meeting tracker. Users log upcoming meetings with a title,
+ * location, date/time, and optional prep notes. Cards show a live
+ * "time until" countdown so users know at a glance what's coming up.
+ *
+ * KEY FEATURES:
+ *  - Upcoming and Completed sections
+ *  - Live countdown per meeting (e.g. "In 2h 30m", "Passed")
+ *  - Location and notes displayed on card if provided
+ *  - Tap to mark done; long press to delete
+ *  - Add Modal: title, location, date/time, notes
+ *
+ * DATA FLOW:
+ *  Stored in AsyncStorage under key "meetings_data" as a JSON array.
+ *  Sorted by datetime ascending so next meeting is always at the top.
+ *
+ * DESIGN DECISION:
+ * BLUE matches the Routine screen identity since meetings are a sub-category
+ * of routine management. Keeping the same colour creates a visual connection
+ * between the two screens without needing explicit navigation breadcrumbs.
+ */
+// screens/MeetingsScreen.js — 1Life Hub | BLUE identity screen
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
@@ -9,62 +33,34 @@ import {
   Modal,
   TextInput,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { COLORS } from "../constants/colors";
 
-const GREEN = COLORS.neonGreen;
-const MUTED = COLORS.textMuted;
+const BG = "#0A0E27";
+const RED = "#CC0000";
+const BLUE = "#0047AB";
+const GREEN = "#00C060";
+const ORANGE = "#FF4B0A";
+const WHITE = "#FFFFFF";
+const MUTED = "rgba(255,255,255,0.55)";
+const DIM = "rgba(255,255,255,0.80)";
+
 const MEETINGS_KEY = "meetings_data";
-
-function formatDate(dateStr) {
-  if (!dateStr) return null;
-  return dateStr;
-}
 
 function timeUntil(dateStr) {
   if (!dateStr) return null;
-  const now = new Date();
-  const then = new Date(dateStr);
-  const diff = then - now;
+  const diff = new Date(dateStr) - new Date();
   if (diff < 0) return "Passed";
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
   if (days > 0) return `In ${days}d ${hours}h`;
   if (hours > 0) return `In ${hours}h ${mins}m`;
   return `In ${mins}m`;
-}
-
-// Simple date/time picker using text inputs
-function DateTimePicker({ date, time, onDateChange, onTimeChange }) {
-  return (
-    <View style={p.dtRow}>
-      <View style={p.dtField}>
-        <Text style={p.dtLabel}>DATE</Text>
-        <TextInput
-          style={p.dtInput}
-          value={date}
-          onChangeText={onDateChange}
-          placeholder="DD/MM/YYYY"
-          placeholderTextColor="#44445a"
-          keyboardType="numbers-and-punctuation"
-        />
-      </View>
-      <View style={p.dtField}>
-        <Text style={p.dtLabel}>TIME</Text>
-        <TextInput
-          style={p.dtInput}
-          value={time}
-          onChangeText={onTimeChange}
-          placeholder="HH:MM"
-          placeholderTextColor="#44445a"
-          keyboardType="numbers-and-punctuation"
-        />
-      </View>
-    </View>
-  );
 }
 
 export default function MeetingsScreen({ navigation }) {
@@ -80,7 +76,6 @@ export default function MeetingsScreen({ navigation }) {
     try {
       const raw = await AsyncStorage.getItem(MEETINGS_KEY);
       const all = raw ? JSON.parse(raw) : [];
-      // Sort by date
       setMeetings(
         all.sort((a, b) => new Date(a.datetime) - new Date(b.datetime)),
       );
@@ -93,11 +88,11 @@ export default function MeetingsScreen({ navigation }) {
     load();
   }, [load]);
   useEffect(() => {
-    const unsub = navigation.addListener("focus", load);
-    return unsub;
+    const u = navigation.addListener("focus", load);
+    return u;
   }, [navigation, load]);
 
-  const save = async (updated) => {
+  const persist = async (updated) => {
     await AsyncStorage.setItem(MEETINGS_KEY, JSON.stringify(updated));
     setMeetings(
       updated.sort((a, b) => new Date(a.datetime) - new Date(b.datetime)),
@@ -110,15 +105,17 @@ export default function MeetingsScreen({ navigation }) {
     const datetime = `${year}-${month}-${day}T${time || "00:00"}`;
     const raw = await AsyncStorage.getItem(MEETINGS_KEY);
     const all = raw ? JSON.parse(raw) : [];
-    const newMeeting = {
-      id: Date.now().toString(),
-      title: title.trim(),
-      location: location.trim(),
-      datetime,
-      notes: notes.trim(),
-      done: false,
-    };
-    await save([...all, newMeeting]);
+    await persist([
+      ...all,
+      {
+        id: Date.now().toString(),
+        title: title.trim(),
+        location: location.trim(),
+        datetime,
+        notes: notes.trim(),
+        done: false,
+      },
+    ]);
     setTitle("");
     setLocation("");
     setDate("");
@@ -127,8 +124,8 @@ export default function MeetingsScreen({ navigation }) {
     setModal(false);
   };
 
-  const deleteMeeting = (id, title) => {
-    Alert.alert("Delete meeting", `Delete "${title}"?`, [
+  const deleteMeeting = (id, name) => {
+    Alert.alert("Delete Meeting", `Delete "${name}"?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
@@ -136,7 +133,7 @@ export default function MeetingsScreen({ navigation }) {
         onPress: async () => {
           const raw = await AsyncStorage.getItem(MEETINGS_KEY);
           const all = raw ? JSON.parse(raw) : [];
-          await save(all.filter((m) => m.id !== id));
+          await persist(all.filter((m) => m.id !== id));
         },
       },
     ]);
@@ -145,87 +142,94 @@ export default function MeetingsScreen({ navigation }) {
   const toggleDone = async (id) => {
     const raw = await AsyncStorage.getItem(MEETINGS_KEY);
     const all = raw ? JSON.parse(raw) : [];
-    await save(all.map((m) => (m.id === id ? { ...m, done: !m.done } : m)));
+    await persist(all.map((m) => (m.id === id ? { ...m, done: !m.done } : m)));
   };
 
   const upcoming = meetings.filter((m) => !m.done);
   const past = meetings.filter((m) => m.done);
 
   return (
-    <SafeAreaView style={p.root} edges={["top"]}>
-      {/* Header */}
-      <View style={p.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={p.backBtn}>
-          <Text style={p.backArrow}>←</Text>
+    <SafeAreaView style={s.root} edges={["top"]}>
+      {/* ── BLUE HEADER ── */}
+      <View style={s.headerBlock}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={WHITE} />
         </TouchableOpacity>
-        <Text style={p.title}>MEETINGS</Text>
-        <TouchableOpacity style={p.addBtn} onPress={() => setModal(true)}>
-          <Text style={p.addBtnTxt}>+ ADD</Text>
+        <View style={{ flex: 1, marginLeft: 10 }}>
+          <Text style={s.title}>MEETINGS</Text>
+          <Text style={s.sub}>
+            {upcoming.length} upcoming · long press to delete
+          </Text>
+        </View>
+        <TouchableOpacity style={s.addBtn} onPress={() => setModal(true)}>
+          <Ionicons name="add" size={20} color={WHITE} />
         </TouchableOpacity>
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 60 }}
+        contentContainerStyle={{ paddingBottom: 60, paddingHorizontal: 14 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Upcoming */}
         {upcoming.length === 0 ? (
-          <View style={p.emptyCard}>
-            <Text style={p.emptyTitle}>No upcoming meetings</Text>
-            <Text style={p.emptyDesc}>Tap + ADD to schedule one</Text>
+          <View style={s.emptyCard}>
+            <View style={s.emptyIcon}>
+              <Ionicons name="calendar-outline" size={28} color={BLUE} />
+            </View>
+            <Text style={s.emptyTitle}>No upcoming meetings</Text>
+            <Text style={s.emptySub}>Tap + to schedule one</Text>
           </View>
         ) : (
           <>
-            <Text style={p.secLabel}>UPCOMING</Text>
+            <Text style={s.sectionLabel}>UPCOMING</Text>
             {upcoming.map((m) => {
               const until = timeUntil(m.datetime);
               const isPast = until === "Passed";
               return (
                 <TouchableOpacity
                   key={m.id}
-                  style={[p.card, isPast && { opacity: 0.5 }]}
-                  onLongPress={() => deleteMeeting(m.id, m.title)}
+                  style={[s.card, isPast && { opacity: 0.55 }]}
                   onPress={() => toggleDone(m.id)}
+                  onLongPress={() => deleteMeeting(m.id, m.title)}
                   activeOpacity={0.8}
                 >
-                  <View style={p.cardAccent} />
-                  <View style={p.cardBody}>
-                    <View style={p.cardHeader}>
-                      <Text style={p.cardTitle}>{m.title}</Text>
+                  <View style={s.cardAccent} />
+                  <View style={s.cardBody}>
+                    <View style={s.cardHeader}>
+                      <Text style={s.cardTitle}>{m.title}</Text>
                       {until && (
                         <View
                           style={[
-                            p.countdownPill,
+                            s.pill,
                             isPast && {
-                              borderColor: "rgba(255,80,80,0.3)",
-                              backgroundColor: "rgba(255,80,80,0.1)",
+                              borderColor: `${RED}40`,
+                              backgroundColor: `${RED}15`,
                             },
                           ]}
                         >
-                          <Text
-                            style={[
-                              p.countdownTxt,
-                              isPast && { color: "#f87171" },
-                            ]}
-                          >
+                          <Text style={[s.pillTxt, isPast && { color: RED }]}>
                             {until}
                           </Text>
                         </View>
                       )}
                     </View>
                     {m.location ? (
-                      <Text style={p.cardMeta}>📍 {m.location}</Text>
+                      <Text style={s.cardMeta}>
+                        <Ionicons
+                          name="location-outline"
+                          size={11}
+                          color={MUTED}
+                        />{" "}
+                        {m.location}
+                      </Text>
                     ) : null}
                     {m.datetime ? (
-                      <Text style={p.cardMeta}>
-                        🗓{" "}
+                      <Text style={s.cardMeta}>
                         {new Date(m.datetime).toLocaleDateString("en-GB", {
                           weekday: "short",
                           day: "2-digit",
                           month: "short",
                         })}
                         {"  "}
-                        🕐{" "}
                         {new Date(m.datetime).toLocaleTimeString("en-GB", {
                           hour: "2-digit",
                           minute: "2-digit",
@@ -233,32 +237,32 @@ export default function MeetingsScreen({ navigation }) {
                       </Text>
                     ) : null}
                     {m.notes ? (
-                      <Text style={p.cardNotes}>{m.notes}</Text>
+                      <Text style={s.cardNotes}>{m.notes}</Text>
                     ) : null}
+                    <Text style={s.hint}>
+                      Tap to complete · Long press to delete
+                    </Text>
                   </View>
-                  <Text style={p.hint}>Long press to delete</Text>
                 </TouchableOpacity>
               );
             })}
           </>
         )}
 
-        {/* Past / Done */}
         {past.length > 0 && (
           <>
-            <Text style={p.secLabel}>COMPLETED</Text>
+            <Text style={[s.sectionLabel, { marginTop: 16 }]}>COMPLETED ✓</Text>
             {past.map((m) => (
               <TouchableOpacity
                 key={m.id}
-                style={[p.card, { opacity: 0.4 }]}
+                style={[s.card, { opacity: 0.4 }]}
                 onPress={() => toggleDone(m.id)}
                 onLongPress={() => deleteMeeting(m.id, m.title)}
-                activeOpacity={0.8}
               >
-                <View style={p.cardBody}>
+                <View style={s.cardBody}>
                   <Text
                     style={[
-                      p.cardTitle,
+                      s.cardTitle,
                       { textDecorationLine: "line-through" },
                     ]}
                   >
@@ -271,114 +275,169 @@ export default function MeetingsScreen({ navigation }) {
         )}
       </ScrollView>
 
-      {/* Add Modal */}
-      <Modal visible={modal} animationType="slide" transparent>
-        <View style={p.overlay}>
-          <View style={p.sheet}>
-            <View style={p.handle} />
-            <Text style={p.modalTitle}>NEW MEETING</Text>
+      {/* ── ADD MODAL ── */}
+      <Modal
+        visible={modal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={m.overlay}
+        >
+          <TouchableOpacity
+            style={m.backdrop}
+            activeOpacity={1}
+            onPress={() => setModal(false)}
+          />
+          <View style={m.sheet}>
+            <View style={m.handle} />
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: 6,
+              }}
+            >
+              <Ionicons name="calendar-outline" size={20} color={BLUE} />
+              <Text style={m.title}>NEW MEETING</Text>
+            </View>
 
-            <Text style={p.fieldLabel}>TITLE</Text>
+            <Text style={m.label}>TITLE</Text>
             <TextInput
-              style={p.input}
+              style={m.input}
               value={title}
               onChangeText={setTitle}
               placeholder="What's the meeting about?"
-              placeholderTextColor="#44445a"
+              placeholderTextColor={MUTED}
+              color={WHITE}
               autoFocus
             />
 
-            <Text style={p.fieldLabel}>LOCATION (optional)</Text>
+            <Text style={m.label}>LOCATION (optional)</Text>
             <TextInput
-              style={p.input}
+              style={m.input}
               value={location}
               onChangeText={setLocation}
-              placeholder="Room, Zoom link, address..."
-              placeholderTextColor="#44445a"
+              placeholder="Room, Zoom link..."
+              placeholderTextColor={MUTED}
+              color={WHITE}
             />
 
-            <Text style={p.fieldLabel}>DATE & TIME</Text>
-            <DateTimePicker
-              date={date}
-              time={time}
-              onDateChange={setDate}
-              onTimeChange={setTime}
-            />
+            <Text style={m.label}>DATE & TIME</Text>
+            <View style={m.dtRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={m.dtLabel}>DATE (DD/MM/YYYY)</Text>
+                <TextInput
+                  style={m.dtInput}
+                  value={date}
+                  onChangeText={setDate}
+                  placeholder="20/05/2026"
+                  placeholderTextColor={MUTED}
+                  color={WHITE}
+                  keyboardType="numbers-and-punctuation"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={m.dtLabel}>TIME (HH:MM)</Text>
+                <TextInput
+                  style={m.dtInput}
+                  value={time}
+                  onChangeText={setTime}
+                  placeholder="09:00"
+                  placeholderTextColor={MUTED}
+                  color={WHITE}
+                  keyboardType="numbers-and-punctuation"
+                />
+              </View>
+            </View>
 
-            <Text style={p.fieldLabel}>NOTES (optional)</Text>
+            <Text style={m.label}>NOTES (optional)</Text>
             <TextInput
-              style={[p.input, { height: 60 }]}
+              style={[m.input, { height: 60 }]}
               value={notes}
               onChangeText={setNotes}
               multiline
               placeholder="Any prep notes..."
-              placeholderTextColor="#44445a"
+              placeholderTextColor={MUTED}
+              color={WHITE}
             />
 
-            <View style={p.btns}>
+            <View style={m.actions}>
               <TouchableOpacity
-                style={p.cancelBtn}
+                style={m.cancelBtn}
                 onPress={() => setModal(false)}
               >
-                <Text style={p.cancelTxt}>CANCEL</Text>
+                <Text style={m.cancelTxt}>CANCEL</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={p.saveBtn} onPress={create}>
-                <Text style={p.saveTxt}>SAVE</Text>
+              <TouchableOpacity
+                style={[m.saveBtn, !title.trim() && { opacity: 0.4 }]}
+                onPress={create}
+                disabled={!title.trim()}
+              >
+                <Ionicons name="checkmark" size={16} color={WHITE} />
+                <Text style={m.saveTxt}>SAVE</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
 }
 
-const p = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.bg },
-  header: {
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: BG },
+  headerBlock: {
+    backgroundColor: BLUE,
+    marginHorizontal: 14,
+    marginTop: 14,
+    borderRadius: 20,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 12,
+    padding: 16,
   },
   backBtn: { padding: 4 },
-  backArrow: { fontSize: 24, color: GREEN, fontWeight: "300" },
   title: {
-    fontSize: 14,
+    fontSize: 22,
     fontFamily: "Orbitron",
-    color: GREEN,
-    letterSpacing: 2,
+    color: WHITE,
+    letterSpacing: 1.5,
+    lineHeight: 24,
+  },
+  sub: {
+    fontSize: 10,
+    color: "rgba(255,255,255,0.70)",
+    fontWeight: "500",
+    marginTop: 2,
   },
   addBtn: {
-    backgroundColor: GREEN,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.20)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  addBtnTxt: { color: "#000", fontWeight: "900", fontSize: 12 },
-
-  secLabel: {
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 8,
+  sectionLabel: {
     fontSize: 9,
     color: MUTED,
-    letterSpacing: 2,
-    fontWeight: "700",
-  },
-
-  card: {
-    marginHorizontal: 14,
+    letterSpacing: 3,
+    fontWeight: "800",
+    marginTop: 20,
     marginBottom: 10,
+  },
+  card: {
     backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 18,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
+    marginBottom: 10,
     overflow: "hidden",
   },
-  cardAccent: { height: 2, backgroundColor: GREEN },
+  cardAccent: { height: 3, backgroundColor: BLUE },
   cardBody: { padding: 16 },
   cardHeader: {
     flexDirection: "row",
@@ -389,128 +448,136 @@ const p = StyleSheet.create({
   cardTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: COLORS.text,
+    color: WHITE,
     flex: 1,
     marginRight: 8,
   },
   cardMeta: { fontSize: 11, color: MUTED, marginBottom: 4 },
   cardNotes: { fontSize: 11, color: MUTED, marginTop: 6, fontStyle: "italic" },
-  hint: {
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    fontSize: 9,
-    color: "rgba(0,0,0,0.10)",
-  },
-
-  countdownPill: {
+  hint: { fontSize: 9, color: "rgba(255,255,255,0.20)", marginTop: 8 },
+  pill: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: `${GREEN}40`,
-    backgroundColor: `${GREEN}12`,
+    borderColor: `${BLUE}40`,
+    backgroundColor: `${BLUE}15`,
   },
-  countdownTxt: { fontSize: 10, fontWeight: "700", color: GREEN },
-
+  pillTxt: { fontSize: 10, fontWeight: "700", color: BLUE },
   emptyCard: {
-    margin: 14,
-    padding: 32,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    marginTop: 40,
     alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 20,
+    padding: 32,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: `${BLUE}20`,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 6,
+    fontSize: 18,
+    fontWeight: "800",
+    color: WHITE,
+    marginBottom: 8,
   },
-  emptyDesc: { fontSize: 12, color: MUTED },
+  emptySub: { fontSize: 13, color: MUTED },
+});
 
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.75)",
-    justifyContent: "flex-end",
+const m = StyleSheet.create({
+  overlay: { flex: 1, justifyContent: "flex-end" },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.75)",
   },
   sheet: {
-    backgroundColor: "#0e0e18",
+    backgroundColor: "#12183A",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 24,
     paddingBottom: 44,
     borderTopWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.10)",
   },
   handle: {
     width: 40,
     height: 4,
-    backgroundColor: "rgba(0,0,0,0.10)",
+    backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: 2,
     alignSelf: "center",
     marginBottom: 20,
   },
-  modalTitle: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: GREEN,
+  title: {
+    fontSize: 15,
+    fontFamily: "Orbitron",
+    color: BLUE,
     letterSpacing: 2,
-    marginBottom: 4,
   },
-  fieldLabel: {
+  label: {
     fontSize: 9,
-    color: "#44445a",
-    letterSpacing: 1.5,
+    color: MUTED,
+    letterSpacing: 2,
     fontWeight: "700",
-    marginBottom: 6,
-    marginTop: 14,
+    marginBottom: 8,
+    marginTop: 16,
   },
   input: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 14,
     padding: 14,
-    color: "#e8e8f0",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    fontSize: 14,
+    borderColor: "rgba(255,255,255,0.12)",
+    fontSize: 15,
   },
   dtRow: { flexDirection: "row", gap: 10 },
-  dtField: { flex: 1 },
   dtLabel: {
     fontSize: 9,
-    color: "#44445a",
+    color: MUTED,
     letterSpacing: 1,
     fontWeight: "700",
-    marginBottom: 4,
+    marginBottom: 6,
   },
   dtInput: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(255,255,255,0.08)",
     borderRadius: 12,
     padding: 14,
-    color: "#e8e8f0",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.12)",
     fontSize: 14,
     textAlign: "center",
   },
-  btns: { flexDirection: "row", gap: 10, marginTop: 24 },
+  actions: { flexDirection: "row", gap: 12, marginTop: 24 },
   cancelBtn: {
     flex: 1,
-    borderRadius: 14,
-    padding: 16,
+    paddingVertical: 16,
+    borderRadius: 16,
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.10)",
   },
-  cancelTxt: { color: "#8888a0", fontWeight: "700", fontSize: 13 },
+  cancelTxt: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: MUTED,
+    letterSpacing: 1,
+  },
   saveBtn: {
     flex: 2,
-    borderRadius: 14,
-    padding: 16,
+    paddingVertical: 16,
+    borderRadius: 16,
     alignItems: "center",
-    backgroundColor: GREEN,
+    justifyContent: "center",
+    backgroundColor: BLUE,
+    flexDirection: "row",
+    gap: 8,
   },
-  saveTxt: { color: "#000", fontWeight: "900", fontSize: 13 },
+  saveTxt: { fontSize: 13, fontWeight: "900", color: WHITE, letterSpacing: 1 },
 });
