@@ -1,7 +1,7 @@
 # myLifeTracker
-A mobile life-tracking app that visualises daily progress through a growing tree. Log your health, habits, and routine — watch your tree grow.
+#A mobile life-tracking app that visualises daily progress through a growing tree. Log your health, habits, and routine — watch your tree grow.
 
-Screens
+#Screens
 
 Today — dashboard with pulse score, bonsai tree, and notices
 Physical — log sleep, water, and movement daily
