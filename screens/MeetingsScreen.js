@@ -372,10 +372,10 @@ const p = StyleSheet.create({
   card: {
     marginHorizontal: 14,
     marginBottom: 10,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
+    borderColor: "rgba(255,255,255,0.10)",
     overflow: "hidden",
   },
   cardAccent: { height: 2, backgroundColor: GREEN },
@@ -399,7 +399,7 @@ const p = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 10,
     fontSize: 9,
-    color: "rgba(255,255,255,0.15)",
+    color: "rgba(0,0,0,0.10)",
   },
 
   countdownPill: {
@@ -415,10 +415,10 @@ const p = StyleSheet.create({
   emptyCard: {
     margin: 14,
     padding: 32,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
+    borderColor: "rgba(255,255,255,0.10)",
     alignItems: "center",
   },
   emptyTitle: {
@@ -431,7 +431,7 @@ const p = StyleSheet.create({
 
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.75)",
+    backgroundColor: "rgba(255,255,255,0.75)",
     justifyContent: "flex-end",
   },
   sheet: {
@@ -446,7 +446,7 @@ const p = StyleSheet.create({
   handle: {
     width: 40,
     height: 4,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(0,0,0,0.10)",
     borderRadius: 2,
     alignSelf: "center",
     marginBottom: 20,
@@ -467,7 +467,7 @@ const p = StyleSheet.create({
     marginTop: 14,
   },
   input: {
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 12,
     padding: 14,
     color: "#e8e8f0",
@@ -485,7 +485,7 @@ const p = StyleSheet.create({
     marginBottom: 4,
   },
   dtInput: {
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 12,
     padding: 14,
     color: "#e8e8f0",
@@ -500,7 +500,7 @@ const p = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
   },

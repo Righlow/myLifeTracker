@@ -21,14 +21,14 @@ import { habitsStore, entriesStore, goalsStore, healthStore } from "../store";
 import BonsaiGrowthModel from "./BonsaiGrowthModel";
 import { COLORS } from "../constants/colors";
 
-const BG = "#130101";
-const GREEN = "#00B85C";
-const BLUE = "#441FFF";
-const RED = "#E8001C";
-const ORANGE = "#FF4B0A";
-const WHITE = "#FFFFFF";
-const MUTED = "rgba(255,255,255,0.35)";
-const DIM = "rgba(255,255,255,0.65)";
+const BG = "#0A0E27"; // dark navy — page background
+const RED = "#CC0000"; // Physical screen / alerts
+const BLUE = "#0047AB"; // Routine / pulse card
+const GREEN = "#00C060"; // Today header / XP / goals
+const ORANGE = "#FF4B0A"; // deadlines / warnings
+const WHITE = "#FFFFFF"; // ALL text and icons on dark surfaces
+const MUTED = "rgba(255,255,255,0.55)";
+const DIM = "rgba(255,255,255,0.80)";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -245,7 +245,7 @@ function NoticesSection({ tasks, onToggle, onDelete, navigation }) {
 
 // ── PULSE CARD ────────────────────────────────────────────────
 function PulseCard({ bars, overall }) {
-  const overallColor = overall >= 70 ? GREEN : overall >= 40 ? ORANGE : RED;
+  const overallColor = WHITE; // always white on blue card
   return (
     <View style={s.pulseCard}>
       <View style={s.pulseHeader}>
@@ -253,7 +253,12 @@ function PulseCard({ bars, overall }) {
         <Text style={[s.pulseScore, { color: overallColor }]}>{overall}%</Text>
       </View>
       {bars.map((bar) => {
-        const c = bar.score >= 70 ? GREEN : bar.score >= 40 ? ORANGE : RED;
+        const c =
+          bar.score >= 70
+            ? GREEN
+            : bar.score > 0
+              ? RED
+              : "rgba(255,255,255,0.20)";
         return (
           <View key={bar.label} style={s.pulseRow}>
             <Text style={s.pulseLabel}>{bar.label}</Text>
@@ -265,7 +270,7 @@ function PulseCard({ bars, overall }) {
                 ]}
               />
             </View>
-            <Text style={[s.pulsePct, { color: c }]}>{bar.score}%</Text>
+            <Text style={[s.pulsePct, { color: WHITE }]}>{bar.score}%</Text>
           </View>
         );
       })}
@@ -664,16 +669,23 @@ export default function TodayScreen({ navigation }) {
           label="ROUTINE"
           iconColor={DIM}
           btnStyle={{
-            backgroundColor: "rgba(255,255,255,0.06)",
-            borderColor: "rgba(255,255,255,0.15)",
+            backgroundColor: "rgba(255,255,255,0.10)",
+            borderColor: "rgba(255,255,255,0.30)",
           }}
           onPress={toggleRoutine}
         />
         <FabButton
+          icon="leaf-outline"
+          label="HABITS"
+          iconColor={WHITE}
+          btnStyle={{ backgroundColor: GREEN, borderColor: GREEN }}
+          onPress={() => navigation.navigate("Habits")}
+        />
+        <FabButton
           icon={physicalOpen ? "close" : "heart-outline"}
           label="PHYSICAL"
-          iconColor={RED}
-          btnStyle={{ backgroundColor: `${RED}20`, borderColor: `${RED}60` }}
+          iconColor={WHITE}
+          btnStyle={{ backgroundColor: RED, borderColor: RED }}
           onPress={togglePhysical}
         />
       </View>
@@ -729,28 +741,28 @@ const s = StyleSheet.create({
   title: {
     fontSize: 26,
     fontFamily: "Orbitron",
-    color: BG,
+    color: WHITE,
     letterSpacing: 2,
     lineHeight: 28,
   },
   date: {
     fontSize: 11,
-    color: "rgba(0,0,0,0.45)",
-    fontWeight: "600",
+    color: "rgba(255,255,255,0.85)",
+    fontWeight: "700",
     marginTop: 3,
   },
   streakPill: {
     flexDirection: "row",
     alignItems: "baseline",
-    backgroundColor: "rgba(0,0,0,0.12)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  streakNum: { fontSize: 22, fontWeight: "900", color: BG },
+  streakNum: { fontSize: 22, fontWeight: "900", color: WHITE },
   streakLbl: {
     fontSize: 9,
-    color: "rgba(0,0,0,0.45)",
+    color: "rgba(255,255,255,0.80)",
     fontWeight: "700",
     letterSpacing: 1,
   },
@@ -758,10 +770,10 @@ const s = StyleSheet.create({
   bonsaiCard: {
     marginHorizontal: 14,
     marginTop: 10,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
+    borderWidth: 2,
+    borderColor: "#D0D8E8",
     overflow: "hidden",
   },
 
@@ -780,11 +792,11 @@ const s = StyleSheet.create({
   },
   pulseTitle: {
     fontSize: 10,
-    color: "rgba(255,255,255,0.6)",
+    color: "#FFFFFF",
     letterSpacing: 2.5,
-    fontWeight: "700",
+    fontWeight: "800",
   },
-  pulseScore: { fontSize: 22, fontWeight: "900", color: WHITE },
+  pulseScore: { fontSize: 22, fontWeight: "900", color: "#FFFFFF" },
   pulseRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -792,37 +804,48 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
   pulseLabel: {
-    fontSize: 9,
-    color: "rgba(255,255,255,0.55)",
-    fontWeight: "700",
+    fontSize: 10,
+    color: "#FFFFFF",
+    fontWeight: "800",
     letterSpacing: 1.5,
-    width: 58,
+    width: 72,
   },
   pulseTrack: {
     flex: 1,
     height: 5,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.25)",
     borderRadius: 3,
     overflow: "hidden",
   },
   pulseFill: { height: "100%", borderRadius: 3 },
-  pulsePct: { fontSize: 11, fontWeight: "800", width: 36, textAlign: "right" },
+  pulsePct: {
+    fontSize: 12,
+    fontWeight: "900",
+    width: 36,
+    textAlign: "right",
+    color: "#FFFFFF",
+  },
 
   sectionHeader: { paddingHorizontal: 18, paddingTop: 16, paddingBottom: 8 },
   sectionLabel: {
     fontSize: 9,
-    color: MUTED,
+    color: "rgba(255,255,255,0.55)",
     letterSpacing: 3,
-    fontWeight: "700",
+    fontWeight: "800",
   },
 
   noticesCard: {
     marginHorizontal: 14,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.10)",
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
   noticeRow: {
     flexDirection: "row",
@@ -832,8 +855,8 @@ const s = StyleSheet.create({
     gap: 12,
   },
   noticeDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
-  noticeTitle: { fontSize: 13, fontWeight: "600", color: WHITE },
-  noticeSub: { fontSize: 10, color: MUTED, marginTop: 2 },
+  noticeTitle: { fontSize: 14, fontWeight: "700", color: WHITE },
+  noticeSub: { fontSize: 11, color: MUTED, marginTop: 2 },
   noticePill: {
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -843,20 +866,24 @@ const s = StyleSheet.create({
   noticePillTxt: { fontSize: 8, fontWeight: "800", letterSpacing: 0.5 },
   divider: {
     height: 1,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(255,255,255,0.08)",
     marginHorizontal: 14,
   },
 
   emptyNotices: {
     marginHorizontal: 14,
     padding: 24,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.10)",
     alignItems: "center",
   },
-  emptyNoticesTxt: { fontSize: 12, color: MUTED, fontWeight: "500" },
+  emptyNoticesTxt: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.55)",
+    fontWeight: "600",
+  },
 
   xpToast: {
     position: "absolute",
@@ -918,7 +945,7 @@ const st = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderColor: "rgba(0,0,0,0.10)",
   },
   labelTxt: { fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
 });
@@ -930,18 +957,18 @@ const mo = StyleSheet.create({
     justifyContent: "flex-end",
   },
   sheet: {
-    backgroundColor: "#1a0101",
+    backgroundColor: "rgba(255,255,255,0.08)",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 24,
     paddingBottom: 44,
     borderTopWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(0,0,0,0.05)",
   },
   handle: {
     width: 40,
     height: 4,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(0,0,0,0.10)",
     borderRadius: 2,
     alignSelf: "center",
     marginBottom: 20,
@@ -949,16 +976,16 @@ const mo = StyleSheet.create({
   title: {
     fontSize: 18,
     fontFamily: "Orbitron",
-    color: GREEN,
+    color: BLUE,
     letterSpacing: 2,
     marginBottom: 16,
   },
   input: {
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: BG,
     borderRadius: 14,
     padding: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1.5,
+    borderColor: "#C0C0C0",
     fontSize: 15,
   },
   btns: { flexDirection: "row", gap: 10, marginTop: 20 },
@@ -967,9 +994,9 @@ const mo = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(0,0,0,0.15)",
   },
   cancelTxt: { color: DIM, fontWeight: "700", fontSize: 13, letterSpacing: 1 },
   saveBtn: {
@@ -977,7 +1004,12 @@ const mo = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     alignItems: "center",
-    backgroundColor: GREEN,
+    backgroundColor: BLUE,
   },
-  saveTxt: { color: BG, fontWeight: "900", fontSize: 13, letterSpacing: 1 },
+  saveTxt: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+    fontSize: 13,
+    letterSpacing: 1,
+  },
 });

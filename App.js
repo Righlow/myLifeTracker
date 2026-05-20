@@ -5,20 +5,20 @@ import { useFonts } from "expo-font";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import TodayScreen from "./screens/Today";
-
 import PhysicalScreen from "./screens/Physical";
-import OnboardingScreen from "./screens/OnboardingScreen";
+import RoutineScreen from "./screens/Routine";
+import HabitsScreen from "./screens/HabitsScreen";
 import MeetingsScreen from "./screens/MeetingsScreen";
 import DeadlinesScreen from "./screens/DeadlinesScreen";
-import RoutineScreen from "./screens/Routine";
+import OnboardingScreen from "./screens/OnboardingScreen";
+
+// Set to true to force onboarding every launch (testing only)
+const FORCE_ONBOARDING = true;
 
 function MainApp() {
   const [screen, setScreen] = useState({ name: "Today", params: {} });
-
-  // Each screen registers its focus callbacks here
   const listenersRef = useRef({});
 
-  // Fire all focus listeners for a given screen name
   const fireFocus = (name) => {
     setTimeout(() => {
       (listenersRef.current[name] || []).forEach((fn) => fn());
@@ -31,7 +31,6 @@ function MainApp() {
   };
 
   const goBack = () => {
-    // Always go back to Today and re-fire its focus so load() runs fresh
     setScreen({ name: "Today", params: {} });
     fireFocus("Today");
   };
@@ -41,48 +40,42 @@ function MainApp() {
     goBack,
     addListener: (event, callback) => {
       if (event === "focus") {
-        if (!listenersRef.current[screenName]) {
+        if (!listenersRef.current[screenName])
           listenersRef.current[screenName] = [];
-        }
-        // Avoid duplicate registrations
-        if (!listenersRef.current[screenName].includes(callback)) {
+        if (!listenersRef.current[screenName].includes(callback))
           listenersRef.current[screenName].push(callback);
-        }
       }
-      // Return unsubscribe function
       return () => {
-        if (listenersRef.current[screenName]) {
+        if (listenersRef.current[screenName])
           listenersRef.current[screenName] = listenersRef.current[
             screenName
           ].filter((fn) => fn !== callback);
-        }
       };
     },
   });
 
   const makeRoute = (params = {}) => ({ params });
-
   const { name, params } = screen;
 
   switch (name) {
-    case "Habits":
-      return (
-        <HabitsScreen
-          navigation={makeNavigation("Habits")}
-          route={makeRoute(params)}
-        />
-      );
-    case "Goals":
-      return (
-        <GoalsScreen
-          navigation={makeNavigation("Goals")}
-          route={makeRoute(params)}
-        />
-      );
     case "Physical":
       return (
         <PhysicalScreen
           navigation={makeNavigation("Physical")}
+          route={makeRoute(params)}
+        />
+      );
+    case "Routine":
+      return (
+        <RoutineScreen
+          navigation={makeNavigation("Routine")}
+          route={makeRoute(params)}
+        />
+      );
+    case "Habits":
+      return (
+        <HabitsScreen
+          navigation={makeNavigation("Habits")}
           route={makeRoute(params)}
         />
       );
@@ -97,13 +90,6 @@ function MainApp() {
       return (
         <DeadlinesScreen
           navigation={makeNavigation("Deadlines")}
-          route={makeRoute(params)}
-        />
-      );
-    case "Routine":
-      return (
-        <RoutineScreen
-          navigation={makeNavigation("Routine")}
           route={makeRoute(params)}
         />
       );
@@ -127,9 +113,15 @@ export default function App() {
   const [onboardingDone, setOnboardingDone] = useState(null);
 
   useEffect(() => {
-    AsyncStorage.getItem("onboarding_done").then((val) => {
-      setOnboardingDone(val === "true");
-    });
+    if (FORCE_ONBOARDING) {
+      AsyncStorage.removeItem("onboarding_done").then(() =>
+        setOnboardingDone(false),
+      );
+    } else {
+      AsyncStorage.getItem("onboarding_done").then((val) =>
+        setOnboardingDone(val === "true"),
+      );
+    }
   }, []);
 
   if (!fontsLoaded || onboardingDone === null) return null;

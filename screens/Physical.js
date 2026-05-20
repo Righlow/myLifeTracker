@@ -17,14 +17,14 @@ import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
 import { healthStore } from "../store";
 
-const BG = "#130101";
-const GREEN = "#00B85C";
-const BLUE = "#441FFF";
-const RED = "#E8001C";
-const ORANGE = "#FF4B0A";
-const WHITE = "#FFFFFF";
-const MUTED = "rgba(255,255,255,0.35)";
-const DIM = "rgba(255,255,255,0.65)";
+const BG = "#0A0E27"; // dark navy — page background
+const RED = "#CC0000"; // Physical screen / alerts
+const BLUE = "#0047AB"; // Routine / pulse card
+const GREEN = "#00C060"; // Today header / XP / goals
+const ORANGE = "#FF4B0A"; // deadlines / warnings
+const WHITE = "#FFFFFF"; // ALL text and icons on dark surfaces
+const MUTED = "rgba(255,255,255,0.55)";
+const DIM = "rgba(255,255,255,0.80)";
 
 const TABS = [
   { key: "sleep", label: "Sleep", icon: "moon-outline" },
@@ -139,7 +139,7 @@ function LogModal({
             value={value}
             onValueChange={setValue}
             minimumTrackTintColor={atGoal ? GREEN : RED}
-            maximumTrackTintColor="rgba(255,255,255,0.08)"
+            maximumTrackTintColor="rgba(0,0,0,0.12)"
             thumbTintColor={atGoal ? GREEN : RED}
           />
 
@@ -293,7 +293,7 @@ function StatCard({ metricKey, value }) {
       : metricKey === "diet"
         ? `${remaining} more glasses to goal`
         : `${remaining} more minutes to goal`;
-  const barColor = atGoal ? GREEN : pct > 0 ? ORANGE : "rgba(255,255,255,0.08)";
+  const barColor = atGoal ? GREEN : pct > 0 ? ORANGE : "rgba(0,0,0,0.12)";
 
   return (
     <View style={p.statCard}>
@@ -302,7 +302,7 @@ function StatCard({ metricKey, value }) {
           style={[
             p.statIcon,
             {
-              backgroundColor: atGoal ? `${GREEN}18` : "rgba(255,255,255,0.05)",
+              backgroundColor: atGoal ? `${GREEN}18` : "rgba(0,0,0,0.08)",
             },
           ]}
         >
@@ -582,14 +582,17 @@ export default function PhysicalScreen({ navigation, route }) {
         </View>
         <View style={p.scorePill}>
           <Text
-            style={[p.scoreNum, { color: scoreColor === GREEN ? BG : WHITE }]}
+            style={[
+              p.scoreNum,
+              { color: scoreColor === GREEN ? "#FFFFFF" : WHITE },
+            ]}
           >
             {overallScore}
           </Text>
           <Text
             style={[
               p.scorePct,
-              { color: scoreColor === GREEN ? BG : "rgba(255,255,255,0.6)" },
+              { color: scoreColor === GREEN ? "#FFFFFF" : MUTED },
             ]}
           >
             %
@@ -710,7 +713,7 @@ const p = StyleSheet.create({
   },
   sub: {
     fontSize: 10,
-    color: "rgba(255,255,255,0.55)",
+    color: "rgba(255,255,255,0.70)",
     fontWeight: "500",
     marginTop: 2,
   },
@@ -734,7 +737,7 @@ const p = StyleSheet.create({
   scoreBarTrack: {
     flex: 1,
     height: 5,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: 3,
     overflow: "hidden",
   },
@@ -750,12 +753,12 @@ const p = StyleSheet.create({
     marginHorizontal: 14,
     marginTop: 10,
     marginBottom: 12,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 16,
     padding: 4,
     gap: 4,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
+    borderColor: "rgba(255,255,255,0.10)",
   },
   tabBtn: {
     flex: 1,
@@ -771,11 +774,11 @@ const p = StyleSheet.create({
   tabLabelActive: { color: WHITE },
   tabContent: { paddingHorizontal: 14 },
   statCard: {
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
+    borderColor: "rgba(255,255,255,0.10)",
     marginBottom: 10,
   },
   statRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
@@ -794,10 +797,14 @@ const p = StyleSheet.create({
   },
   statValue: { fontSize: 28, fontWeight: "900" },
   statUnit: { fontSize: 12, color: MUTED, fontWeight: "600" },
-  statGoal: { fontSize: 11, color: "rgba(255,255,255,0.2)" },
+  statGoal: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.60)",
+    fontWeight: "600",
+  },
   statTrack: {
     height: 5,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(255,255,255,0.12)",
     borderRadius: 3,
     overflow: "hidden",
     marginBottom: 8,
@@ -819,12 +826,12 @@ const p = StyleSheet.create({
     letterSpacing: 0.5,
   },
   pctBadge: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(255,255,255,0.08)",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderColor: "rgba(255,255,255,0.15)",
   },
   pctBadgeTxt: { fontSize: 11, fontWeight: "700", color: WHITE },
   emptyBadge: {
@@ -837,11 +844,11 @@ const p = StyleSheet.create({
   },
   emptyBadgeTxt: { fontSize: 9, fontWeight: "700", color: RED },
   tipsCard: {
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
+    borderColor: "rgba(255,255,255,0.10)",
     marginBottom: 10,
   },
   tipsTitle: {
@@ -863,11 +870,11 @@ const p = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
+    borderColor: "rgba(255,255,255,0.10)",
     marginBottom: 10,
   },
   waterLabel: { fontSize: 13, color: DIM, fontWeight: "500" },
@@ -875,20 +882,20 @@ const p = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(255,255,255,0.10)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
   },
   historyCard: {
     marginHorizontal: 14,
     marginBottom: 12,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
+    borderColor: "rgba(255,255,255,0.10)",
   },
   historyTitle: {
     fontSize: 9,
@@ -913,7 +920,7 @@ const p = StyleSheet.create({
   barTrack: {
     width: 7,
     height: 56,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(255,255,255,0.10)",
     borderRadius: 3,
     overflow: "hidden",
     justifyContent: "flex-end",
@@ -952,21 +959,21 @@ const lg = StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end" },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.75)",
+    backgroundColor: "rgba(255,255,255,0.75)",
   },
   sheet: {
-    backgroundColor: "#1a0101",
+    backgroundColor: "#1A1A1A",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 24,
     paddingBottom: 44,
     borderTopWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(255,255,255,0.10)",
   },
   handle: {
     width: 40,
     height: 4,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(0,0,0,0.10)",
     borderRadius: 2,
     alignSelf: "center",
     marginBottom: 20,
@@ -987,11 +994,11 @@ const lg = StyleSheet.create({
   },
   bigNum: { fontSize: 58, fontWeight: "900", lineHeight: 66 },
   bigUnit: { fontSize: 16, color: MUTED, fontWeight: "600" },
-  slash: { fontSize: 20, color: "rgba(255,255,255,0.15)", marginHorizontal: 4 },
-  goalNum: { fontSize: 20, color: "rgba(255,255,255,0.25)", fontWeight: "700" },
+  slash: { fontSize: 20, color: "rgba(0,0,0,0.35)", marginHorizontal: 4 },
+  goalNum: { fontSize: 20, color: "rgba(255,255,255,0.55)", fontWeight: "700" },
   progressTrack: {
     height: 5,
-    backgroundColor: "rgba(255,255,255,0.07)",
+    backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: 3,
     overflow: "hidden",
     marginBottom: 8,
@@ -1010,8 +1017,8 @@ const lg = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    borderColor: "rgba(0,0,0,0.08)",
+    backgroundColor: "#FFFFFF",
   },
   quickBtnActive: { backgroundColor: RED, borderColor: RED },
   quickTxt: { fontSize: 13, color: MUTED, fontWeight: "700" },
@@ -1030,8 +1037,8 @@ const lg = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    borderColor: "rgba(0,0,0,0.08)",
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
   chipTxt: { fontSize: 12, color: MUTED },
   actions: { flexDirection: "row", gap: 12 },
@@ -1040,7 +1047,7 @@ const lg = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
   },

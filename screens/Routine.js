@@ -16,14 +16,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
-const BG = "#130101";
-const GREEN = "#00B85C";
-const BLUE = "#441FFF";
-const RED = "#E8001C";
-const ORANGE = "#FF4B0A";
-const WHITE = "#FFFFFF";
-const MUTED = "rgba(255,255,255,0.35)";
-const DIM = "rgba(255,255,255,0.65)";
+const BG = "#0A0E27"; // dark navy — page background
+const RED = "#CC0000"; // Physical screen / alerts
+const BLUE = "#0047AB"; // Routine / pulse card
+const GREEN = "#00C060"; // Today header / XP / goals
+const ORANGE = "#FF4B0A"; // deadlines / warnings
+const WHITE = "#FFFFFF"; // ALL text and icons on dark surfaces
+const MUTED = "rgba(255,255,255,0.55)";
+const DIM = "rgba(255,255,255,0.80)";
 
 const TABS = [
   { key: "meeting", label: "Meeting", icon: "calendar-outline", color: BLUE },
@@ -150,7 +150,7 @@ function AddModal({ visible, defaultType, onSave, onClose }) {
           <TextInput
             style={m.input}
             placeholder={placeholder}
-            placeholderTextColor="rgba(255,255,255,0.2)"
+            placeholderTextColor="rgba(255,255,255,0.70)"
             value={title}
             onChangeText={setTitle}
             autoFocus
@@ -165,7 +165,7 @@ function AddModal({ visible, defaultType, onSave, onClose }) {
               <TextInput
                 style={m.input}
                 placeholder="yyyy/mm/dd, --:--"
-                placeholderTextColor="rgba(255,255,255,0.2)"
+                placeholderTextColor="rgba(255,255,255,0.70)"
                 value={when}
                 onChangeText={setWhen}
                 color={WHITE}
@@ -179,7 +179,7 @@ function AddModal({ visible, defaultType, onSave, onClose }) {
               <TextInput
                 style={m.input}
                 placeholder="Room, Zoom link..."
-                placeholderTextColor="rgba(255,255,255,0.2)"
+                placeholderTextColor="rgba(255,255,255,0.70)"
                 color={WHITE}
               />
             </>
@@ -314,8 +314,7 @@ function TaskTab({ items, onToggle, onDelete }) {
             style={[
               r.countPill,
               {
-                borderColor:
-                  pct === 100 ? `${GREEN}50` : "rgba(255,255,255,0.12)",
+                borderColor: pct === 100 ? `${GREEN}50` : "rgba(0,0,0,0.15)",
               },
             ]}
           >
@@ -667,18 +666,22 @@ const r = StyleSheet.create({
     paddingVertical: 6,
   },
   scoreNum: { fontSize: 22, fontWeight: "900", color: WHITE },
-  scorePct: { fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.6)" },
+  scorePct: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.70)",
+  },
   tabBar: {
     flexDirection: "row",
     marginHorizontal: 14,
     marginTop: 10,
     marginBottom: 12,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 16,
     padding: 4,
     gap: 4,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
+    borderColor: "rgba(255,255,255,0.10)",
   },
   tabBtn: {
     flex: 1,
@@ -705,12 +708,12 @@ const r = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 14,
     padding: 13,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
+    borderColor: "rgba(255,255,255,0.10)",
     borderLeftWidth: 3,
   },
   check: {
@@ -732,7 +735,7 @@ const r = StyleSheet.create({
   },
   emptyCard: {
     borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.15)",
     borderStyle: "dashed",
     borderRadius: 16,
     padding: 36,
@@ -750,11 +753,11 @@ const r = StyleSheet.create({
   emptyTxt: { fontSize: 14, fontWeight: "700", color: WHITE, marginBottom: 4 },
   emptySub: { fontSize: 12, color: MUTED },
   progressCard: {
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
+    borderColor: "rgba(255,255,255,0.10)",
     marginBottom: 12,
   },
   progressRow: {
@@ -770,12 +773,12 @@ const r = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(255,255,255,0.06)",
   },
   countTxt: { fontSize: 14, fontWeight: "900" },
   progressTrack: {
     height: 4,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(255,255,255,0.12)",
     borderRadius: 2,
     overflow: "hidden",
   },
@@ -784,11 +787,11 @@ const r = StyleSheet.create({
     marginHorizontal: 14,
     marginTop: 8,
     marginBottom: 12,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
+    borderColor: "rgba(255,255,255,0.10)",
   },
   overviewSectionLabel: {
     fontSize: 9,
@@ -814,7 +817,7 @@ const r = StyleSheet.create({
   overviewTrack: {
     flex: 1,
     height: 4,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(255,255,255,0.12)",
     borderRadius: 2,
     overflow: "hidden",
   },
@@ -849,21 +852,21 @@ const m = StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end" },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.75)",
+    backgroundColor: "rgba(255,255,255,0.75)",
   },
   sheet: {
-    backgroundColor: "#0d0d2a",
+    backgroundColor: "#12183A",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 24,
     paddingBottom: 44,
     borderTopWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(255,255,255,0.10)",
   },
   handle: {
     width: 40,
     height: 4,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(0,0,0,0.10)",
     borderRadius: 2,
     alignSelf: "center",
     marginBottom: 16,
@@ -875,7 +878,7 @@ const m = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -894,11 +897,11 @@ const m = StyleSheet.create({
     marginTop: 14,
   },
   input: {
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 14,
     padding: 13,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.09)",
+    borderColor: "rgba(0,0,0,0.06)",
     fontSize: 14,
   },
   priorityRow: { flexDirection: "row", gap: 10 },
@@ -908,7 +911,7 @@ const m = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     alignItems: "center",
   },
   priorityTxt: {
@@ -923,7 +926,7 @@ const m = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 16,
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
   },

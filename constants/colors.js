@@ -1,42 +1,40 @@
 // constants/colors.js — 1Life Hub
-// Strict 5-colour palette
+// Dark navy theme with Yeshu accent colours
 
 const COLORS = {
-  // ── Core 5 ───────────────────────────────────────────────────
-  bg: "#130101", // Coffee Bean — all backgrounds
-  blue: "#441FFF", // Blue — primary actions, active states, Routine screen
-  green: "#00B85C", // Green — XP, growth, goals hit, Today screen
-  orange: "#FF4B0A", // Orange — warnings, deadlines, alerts only
-  white: "#FFFFFF", // White — all text, icons
+  // ── Core ─────────────────────────────────────────────────────
+  bg: "#0A0E27", // dark navy — page background
+  green: "#00C060", // Today header / XP / goals
+  blue: "#0047AB", // Routine / pulse card
+  red: "#CC0000", // Physical screen / alerts
+  orange: "#FF4B0A", // deadlines / warnings
+  white: "#FFFFFF", // all text on dark surfaces
 
-  // RED for Physical screen (replaces orange there)
-  red: "#E8001C", // Red — Physical Health screen identity
-
-  // ── Aliases (keep backward compat with existing screens) ─────
-  neonGreen: "#00B85C",
-  neonBlue: "#441FFF",
+  // ── Aliases ───────────────────────────────────────────────────
+  neonGreen: "#00C060",
+  neonBlue: "#0047AB",
   neonAmber: "#FF4B0A",
-  neonRed: "#E8001C",
-  neonPurple: "#441FFF", // map to blue — no purple in palette
+  neonRed: "#CC0000",
+  neonPurple: "#0047AB",
 
-  // ── Text ──────────────────────────────────────────────────────
+  // ── Text ─────────────────────────────────────────────────────
   text: "#FFFFFF",
-  textDim: "rgba(255,255,255,0.65)",
-  textMuted: "rgba(255,255,255,0.35)",
+  textDim: "rgba(255,255,255,0.80)",
+  textMuted: "rgba(255,255,255,0.55)",
 
-  // ── Surfaces ──────────────────────────────────────────────────
-  bgSoft: "#1a0101",
-  bgCard: "rgba(255,255,255,0.04)",
-  border: "rgba(255,255,255,0.08)",
+  // ── Surfaces ─────────────────────────────────────────────────
+  bgSoft: "#12183A",
+  bgCard: "rgba(255,255,255,0.06)",
+  border: "rgba(255,255,255,0.10)",
 
-  // ── Domain colours (mapped to palette) ───────────────────────
+  // ── Domain colours ───────────────────────────────────────────
   domains: {
-    physical: "#E8001C", // red
-    mental: "#441FFF", // blue
-    financial: "#FF4B0A", // orange
-    spiritual: "#441FFF", // blue
-    emotional: "#00B85C", // green
-    personal: "#00B85C", // green
+    physical: "#CC0000",
+    mental: "#0047AB",
+    financial: "#FF4B0A",
+    spiritual: "#0047AB",
+    emotional: "#00C060",
+    personal: "#00C060",
   },
 };
 
