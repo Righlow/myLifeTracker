@@ -19,7 +19,6 @@ Habits — build daily habits with streaks and XP
 
 
 Tech Stack
-
 -React Native + Expo go
 
 -AsyncStorage (offline, on-device data)
@@ -29,7 +28,6 @@ Tech Stack
 -Three.js
 
 Intructions 
-
 1.Open app and you'll see today's screen- daily dashboard with tree model and pulse score.
 
 2.log your heal metric on the red FAB button and log in your sleep, diet and gym report for the day.
